@@ -1,0 +1,11 @@
+# Packaging for CurseForge (BigWigsMods/packager, run by .github/workflows/release.yml).
+package-as: Profit
+
+required-dependencies:
+  - auctionator
+
+# Development files; the addon itself is Profit.toc, *.lua and Data/.
+ignore:
+  - tools
+  - export
+  - README.md

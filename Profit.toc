@@ -2,7 +2,9 @@
 ## Title: Profit
 ## Notes: Find your most profitable crafts using Auctionator prices
 ## Author: seth
-## Version: 0.1.0
+## Version: @project-version@
+## X-Curse-Project-ID: 1719723
+## X-Website: https://github.com/ExcEssIv3/profit
 ## Dependencies: Auctionator
 ## SavedVariables: ProfitDB
 ## SavedVariablesPerCharacter: ProfitCharDB
