@@ -275,7 +275,7 @@ local exportWindow
 function ns.ShowExport()
   if not exportWindow then
     local f = CreateFrame("Frame", "ProfitExportWindow", UIParent, "BasicFrameTemplateWithInset")
-    f:SetSize(460, 220)
+    f:SetSize(460, 240)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     table.insert(UISpecialFrames, "ProfitExportWindow")
@@ -286,10 +286,11 @@ function ns.ShowExport()
     help:SetPoint("TOPLEFT", 14, -32)
     help:SetPoint("TOPRIGHT", -14, -32)
     help:SetJustifyH("LEFT")
-    help:SetText("Press Ctrl+C to copy, then send it to the addon's authors. " ..
-      "It contains only trainer skill levels and merchant items you've seen.")
+    help:SetText("Press Ctrl+C (Cmd+C on Mac) to copy, then post it as an issue at " ..
+      "github.com/ExcEssIv3/profit/issues. It contains only trainer skill levels and merchant " ..
+      "items you've seen.")
     local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 14, -60)
+    scroll:SetPoint("TOPLEFT", 14, -78)
     scroll:SetPoint("BOTTOMRIGHT", -34, 14)
     local edit = CreateFrame("EditBox", nil, scroll)
     edit:SetMultiLine(true)
