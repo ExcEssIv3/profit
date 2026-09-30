@@ -83,7 +83,7 @@ local function ScanTrainer()
   end)
   scanningTrainer = false
   if not ok then error(err, 0) end
-  ns.OnDataRecorded()
+  ns.Refresh()
   return recorded
 end
 
@@ -110,13 +110,26 @@ local function ScanMerchant()
       }
     end
   end
-  ns.OnDataRecorded()
+  ns.Refresh()
 end
 
--- Placeholder for the UI, like ns.OnPricesUpdated.
-function ns.OnDataRecorded() end
-
 ns.ScanTrainer = ScanTrainer
+
+-- Everything recorded, as one line of text players can copy and send us. tools/import_recorded.py
+-- reads it. Format: "PROF1" then ";"-separated records:
+--   t,spellID,skill,build,seen            trainer recipe
+--   m,itemID,price,qty,limited,build,seen merchant item (limited is 1 or 0)
+function ns.ExportString()
+  local parts = { "PROF1" }
+  for spellID, t in pairs(ProfessionsDB.trainer) do
+    table.insert(parts, string.format("t,%d,%d,%d,%d", spellID, t.skill, t.build or 0, t.seen or 0))
+  end
+  for itemID, m in pairs(ProfessionsDB.merchant) do
+    table.insert(parts, string.format("m,%d,%s,%d,%d,%d,%d", itemID, tostring(m.price), m.qty or 1,
+      m.limited and 1 or 0, m.build or 0, m.seen or 0))
+  end
+  return table.concat(parts, ";")
+end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")

@@ -103922,7 +103922,7 @@
    "quality": 1,
    "buy_price": 100,
    "sell_price": 25,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "1206": {
    "name": "Moss Agate",
@@ -103978,7 +103978,7 @@
    "quality": 1,
    "buy_price": 400,
    "sell_price": 100,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "1705": {
    "name": "Lesser Moonstone",
@@ -103992,7 +103992,7 @@
    "quality": 1,
    "buy_price": 200,
    "sell_price": 50,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "1710": {
    "name": "Greater Healing Potion",
@@ -104923,7 +104923,7 @@
    "quality": 1,
    "buy_price": 1.5,
    "sell_price": 0,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "3172": {
    "name": "Boar Intestines",
@@ -110404,7 +110404,7 @@
    "quality": 1,
    "buy_price": 800,
    "sell_price": 200,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "8827": {
    "name": "Draught of Water Walking",

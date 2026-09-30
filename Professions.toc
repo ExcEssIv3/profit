@@ -12,3 +12,5 @@ Data\Recipes.lua
 Core.lua
 Record.lua
 Known.lua
+UI.lua
+Minimap.lua

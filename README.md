@@ -14,10 +14,18 @@ ln -s "$PWD" "/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/Pr
 
 In game, after an Auctionator scan:
 
-- `/prof top [count] [profession]`: most profitable crafts that have prices for every item
+- `/prof`: opens the window. Filter (Known + learnable / Known only / All recipes) and
+  profession buttons cycle on click (right-click goes back); click a column to sort and a
+  recipe for its breakdown; clicking a recipe you know also opens it in your profession window. Recipe names are colored by skill-up chance at your skill; grey
+  recipes are listed too, since they can still be profitable.
+- `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value and profit
+- `/prof export`: a string of your trainer and merchant recordings to copy and share
+- `/prof minimap`: show or hide the minimap button (click it to open the window, drag to move it)
 
 Vendor-sold materials are priced at their vendor price; everything else uses Auctionator.
+The addon reads your profession skills from your skill list, and which recipes you know
+each time you open a profession window.
 
 ## Recipe data
 
@@ -61,5 +69,8 @@ you've recorded, log out (so WoW writes the saved variables), then:
 python3 tools/import_recorded.py   # merges WTF/Account/*/SavedVariables/Professions.lua into export/recorded.json
 python3 tools/build_recipes.py
 ```
+
+Strings other players send from `/prof export` import the same way: save them to a text
+file (one per line) and run `python3 tools/import_recorded.py strings.txt`.
 
 Commit `export/recorded.json` with the regenerated data.
