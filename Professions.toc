@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: Professions
+## Notes: Find your most profitable crafts using Auctionator prices
+## Author: seth
+## Version: 0.1.0
+## Dependencies: Auctionator
+## SavedVariables: ProfessionsDB
+## SavedVariablesPerCharacter: ProfessionsCharDB
+
+Data\Items.lua
+Data\Recipes.lua
+Core.lua
+Record.lua
+Known.lua

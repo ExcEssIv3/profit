@@ -1,0 +1,54 @@
+# Crafting materials sold by vendors with unlimited stock, one item name per line.
+# build_recipes.py resolves these against the client data and fails on unknown names.
+# Items seen at merchants in game (export/recorded.json) are added on top of this list.
+
+# Vials
+Empty Vial
+Leaded Vial
+Crystal Vial
+Imbued Vial
+
+# Thread and cloth treatments
+Coarse Thread
+Fine Thread
+Silken Thread
+Heavy Silken Thread
+Rune Thread
+Bleach
+
+# Dyes
+Red Dye
+Blue Dye
+Gray Dye
+Green Dye
+Black Dye
+Pink Dye
+Orange Dye
+Purple Dye
+Yellow Dye
+
+# Blacksmithing and engineering
+Weak Flux
+Strong Flux
+Flask of Oil
+Wooden Stock
+Heavy Stock
+
+# Leatherworking
+Salt
+
+# Cooking
+Mild Spices
+Hot Spices
+Soothing Spices
+Refreshing Spring Water
+Ice Cold Milk
+Simple Flour
+
+# Enchanting
+Simple Wood
+Copper Rod
+
+# Other
+Blank Parchment
+Nightcrawlers
