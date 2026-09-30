@@ -2,9 +2,10 @@
 
 Usage: python tools/import_recorded.py [FILE ...]
 
-Each FILE is either a SavedVariables Professions.lua, or a text file holding strings from
-`/prof export` (one per line, as players send them). "-" reads export strings from stdin.
-With no arguments, reads every account's Professions.lua under the beta client's WTF folder.
+Each FILE is either a SavedVariables Profit.lua (or Professions.lua, from before the addon was
+renamed), or a text file holding strings from `/prof export` (one per line, as players send
+them). "-" reads export strings from stdin.
+With no arguments, reads every account's Profit.lua under the beta client's WTF folder.
 Newer observations replace older ones; changed trainer skill levels are reported. Rerun
 tools/build_recipes.py afterwards to ship the result.
 """
@@ -82,7 +83,7 @@ def parse_saved_variables(text):
 
 
 def parse_export(text):
-    """Parse `/prof export` strings (see ns.ExportString in Record.lua) into ProfessionsDB shape."""
+    """Parse `/prof export` strings (see ns.ExportString in Record.lua) into ProfitDB shape."""
     db = {"trainer": {}, "merchant": {}}
     for line in text.split():
         records = line.split(";")
@@ -105,7 +106,8 @@ def read_db(path):
     text = sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8")
     if text.lstrip().startswith("PROF1"):
         return parse_export(text)
-    return parse_saved_variables(text).get("ProfessionsDB") or {}
+    saved = parse_saved_variables(text)
+    return saved.get("ProfitDB") or saved.get("ProfessionsDB") or {}  # addon was "Professions" before
 
 
 def merge(recorded, db, source):
@@ -125,9 +127,9 @@ def merge(recorded, db, source):
 
 
 def main():
-    paths = [Path(p) for p in sys.argv[1:]] or sorted(WTF.glob("*/SavedVariables/Professions.lua"))
+    paths = [Path(p) for p in sys.argv[1:]] or sorted(WTF.glob("*/SavedVariables/Profit.lua"))
     if not paths:
-        raise SystemExit(f"no Professions.lua found under {WTF}; pass the path explicitly")
+        raise SystemExit(f"no Profit.lua found under {WTF}; pass the path explicitly")
     recorded = json.loads(RECORDED.read_text(encoding="utf-8")) if RECORDED.exists() else {"trainer": {}, "merchant": {}}
     for path in paths:
         print(f"{path}: {merge(recorded, read_db(path), path.name)} new or updated observations")

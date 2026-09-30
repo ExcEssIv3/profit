@@ -1,6 +1,6 @@
 local addonName, ns = ...
 
--- Tracks this character's professions, into ProfessionsCharDB (per character):
+-- Tracks this character's professions, into ProfitCharDB (per character):
 --   skills[profession] = current skill level
 --   known[profession] = { [spellID] = true, ... }  added to each time that profession's window opens
 -- Only ever added to: Classic's window filters (e.g. "Have Materials") hide recipes you know.
@@ -20,17 +20,17 @@ end
 
 local function Store(profession, spellIDs)
   if not (profession and ns.ProfessionNames[profession]) then return end
-  local known = ProfessionsCharDB.known[profession] or {}
+  local known = ProfitCharDB.known[profession] or {}
   for _, spellID in ipairs(spellIDs) do
     if ns.Recipes[spellID] then known[spellID] = true end
   end
-  ProfessionsCharDB.known[profession] = known
+  ProfitCharDB.known[profession] = known
   ns.Refresh()
 end
 
 local function StoreSkill(profession, rank)
-  if profession and rank and ns.ProfessionNames[profession] and ProfessionsCharDB.skills[profession] ~= rank then
-    ProfessionsCharDB.skills[profession] = rank
+  if profession and rank and ns.ProfessionNames[profession] and ProfitCharDB.skills[profession] ~= rank then
+    ProfitCharDB.skills[profession] = rank
     ns.Refresh()
   end
 end
@@ -54,8 +54,8 @@ local function ScanSkills()
     return
   end
   if complete then
-    for name in pairs(ProfessionsCharDB.skills) do
-      if not found[name] then ProfessionsCharDB.skills[name] = nil end
+    for name in pairs(ProfitCharDB.skills) do
+      if not found[name] then ProfitCharDB.skills[name] = nil end
     end
   end
   for name, rank in pairs(found) do StoreSkill(name, rank) end
@@ -142,20 +142,20 @@ function ns.OpenRecipe(spellID)
     return true
   end
   if SelectInClassicWindow(spellID) then return true end
-  print("Professions: open your " .. ns.Recipes[spellID].p .. " window first, then click the recipe again.")
+  print("Profit: open your " .. ns.Recipes[spellID].p .. " window first, then click the recipe again.")
   return false
 end
 
 -- Current skill level, or nil if this character doesn't have the profession (or we haven't read it).
 function ns.SkillLevel(profession)
-  return ProfessionsCharDB and ProfessionsCharDB.skills[profession]
+  return ProfitCharDB and ProfitCharDB.skills[profession]
 end
 
 -- true if known, false if the profession has been scanned and it isn't there, nil if we can't tell.
 function ns.IsKnown(spellID)
   if IsPlayerSpell and IsPlayerSpell(spellID) then return true end
   local recipe = ns.Recipes[spellID]
-  local known = ProfessionsCharDB and ProfessionsCharDB.known[recipe.p]
+  local known = ProfitCharDB and ProfitCharDB.known[recipe.p]
   if known then return known[spellID] == true end
   return nil
 end
@@ -170,9 +170,9 @@ end
 frame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" then
     if arg1 ~= addonName then return end
-    ProfessionsCharDB = ProfessionsCharDB or {}
-    ProfessionsCharDB.known = ProfessionsCharDB.known or {}
-    ProfessionsCharDB.skills = ProfessionsCharDB.skills or {}
+    ProfitCharDB = ProfitCharDB or {}
+    ProfitCharDB.known = ProfitCharDB.known or {}
+    ProfitCharDB.skills = ProfitCharDB.skills or {}
   elseif event == "PLAYER_LOGIN" or event == "SKILL_LINES_CHANGED" then
     ScanSkills()
   elseif event == "CRAFT_SHOW" or event == "CRAFT_UPDATE" then

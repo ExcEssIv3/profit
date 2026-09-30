@@ -1,4 +1,4 @@
-# professions
+# Profit
 
 A WoW Forever addon to find the most profitable profession crafts, using Auctionator's
 price data (`Auctionator.API.v1`) for materials and crafted items.
@@ -6,10 +6,10 @@ price data (`Auctionator.API.v1`) for materials and crafted items.
 ## Install (beta)
 
 Requires Auctionator. Link this repo into the beta client's AddOns folder; the link must be
-named `Professions` to match `Professions.toc`:
+named `Profit` to match `Profit.toc`:
 
 ```sh
-ln -s "$PWD" "/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/Professions"
+ln -s "$PWD" "/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/Profit"
 ```
 
 In game, after an Auctionator scan:
@@ -56,7 +56,7 @@ or drop sources. Those fields are `null` rather than guessed, until filled in by
 
 ## Recording trainers and merchants
 
-The addon records into its saved variables (`ProfessionsDB`) whenever a window opens:
+The addon records into its saved variables (`ProfitDB`) whenever a window opens:
 
 - **Trainers**: the skill needed to learn each recipe, including ones already known or not
   yet available.
@@ -66,7 +66,7 @@ Vendor materials start from the hand-kept list in `tools/vendor_items.txt`. To s
 you've recorded, log out (so WoW writes the saved variables), then:
 
 ```sh
-python3 tools/import_recorded.py   # merges WTF/Account/*/SavedVariables/Professions.lua into export/recorded.json
+python3 tools/import_recorded.py   # merges WTF/Account/*/SavedVariables/Profit.lua into export/recorded.json
 python3 tools/build_recipes.py
 ```
 

@@ -9,7 +9,7 @@ WAGO = "https://wago.tools"
 PRODUCT = "wow_classic_beta"  # WoW Forever beta ships under this product
 FOREVER_PREFIX = "1.60."
 CACHE_DIR = Path(__file__).parent / ".cache"
-USER_AGENT = "professions-addon-tools/0.1"
+USER_AGENT = "profit-addon-tools/0.1"
 
 
 def _get(url):

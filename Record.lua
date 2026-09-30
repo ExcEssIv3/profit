@@ -1,6 +1,6 @@
 local addonName, ns = ...
 
--- Records what the client data can't tell us, into ProfessionsDB (account-wide):
+-- Records what the client data can't tell us, into ProfitDB (account-wide):
 --   trainer[spellID]  = { skill, prof, cost, seen, build }  skill needed to learn a trainer recipe
 --   merchant[itemID]  = { price, qty, limited, seen, build } items merchants sell for gold
 -- tools/import_recorded.py merges these into the shipped data.
@@ -72,7 +72,7 @@ local function ScanTrainer()
         local prof = (skillName and ns.ProfessionNames[skillName]) and skillName or profession
         local itemID = GetTrainerServiceItemLink and ItemIDFromLink(GetTrainerServiceItemLink(i))
         for _, spellID in ipairs(prof and MatchRecipes(prof, name, itemID) or {}) do
-          ProfessionsDB.trainer[spellID] = {
+          ProfitDB.trainer[spellID] = {
             skill = skillLevel or 1, prof = prof, cost = GetTrainerServiceCost and GetTrainerServiceCost(i) or nil,
             seen = now, build = build,
           }
@@ -104,7 +104,7 @@ local function ScanMerchant()
     local price, qty, numAvailable, extendedCost = MerchantItem(i)
     -- Skip items bought with currency or other items, and ones not loaded yet.
     if itemID and price and price > 0 and not extendedCost then
-      ProfessionsDB.merchant[itemID] = {
+      ProfitDB.merchant[itemID] = {
         price = price / math.max(qty or 1, 1), qty = qty,
         limited = (numAvailable or -1) >= 0 or nil, seen = now, build = build,
       }
@@ -121,10 +121,10 @@ ns.ScanTrainer = ScanTrainer
 --   m,itemID,price,qty,limited,build,seen merchant item (limited is 1 or 0)
 function ns.ExportString()
   local parts = { "PROF1" }
-  for spellID, t in pairs(ProfessionsDB.trainer) do
+  for spellID, t in pairs(ProfitDB.trainer) do
     table.insert(parts, string.format("t,%d,%d,%d,%d", spellID, t.skill, t.build or 0, t.seen or 0))
   end
-  for itemID, m in pairs(ProfessionsDB.merchant) do
+  for itemID, m in pairs(ProfitDB.merchant) do
     table.insert(parts, string.format("m,%d,%s,%d,%d,%d,%d", itemID, tostring(m.price), m.qty or 1,
       m.limited and 1 or 0, m.build or 0, m.seen or 0))
   end
@@ -140,10 +140,10 @@ frame:RegisterEvent("MERCHANT_UPDATE")
 frame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" then
     if arg1 ~= addonName then return end
-    ProfessionsDB = ProfessionsDB or {}
-    ProfessionsDB.version = 1
-    ProfessionsDB.trainer = ProfessionsDB.trainer or {}
-    ProfessionsDB.merchant = ProfessionsDB.merchant or {}
+    ProfitDB = ProfitDB or {}
+    ProfitDB.version = 1
+    ProfitDB.trainer = ProfitDB.trainer or {}
+    ProfitDB.merchant = ProfitDB.merchant or {}
   elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
     ScanTrainer()
   else

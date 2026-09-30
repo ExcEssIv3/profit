@@ -1,9 +1,9 @@
 local addonName, ns = ...
 
--- Global names (frames, slash commands) are prefixed "ProfessionsAddon": Blizzard's own
--- profession window is the global ProfessionsFrame.
+-- Global names (frames, slash commands) are prefixed "Profit". Avoid "Professions...": Blizzard's
+-- own profession window is the global ProfessionsFrame.
 
--- The Professions window (/prof): a sortable, filterable list of recipes with a detail pane,
+-- The Profit window (/prof): a sortable, filterable list of recipes with a detail pane,
 -- and the export window (/prof export). Built from basic templates that exist in both the
 -- Classic and modern UI.
 
@@ -111,7 +111,7 @@ function Update()
 end
 
 local function CreateWindow()
-  local f = CreateFrame("Frame", "ProfessionsAddonWindow", UIParent, "BasicFrameTemplateWithInset")
+  local f = CreateFrame("Frame", "ProfitWindow", UIParent, "BasicFrameTemplateWithInset")
   f:SetSize(LIST_WIDTH + 330, 470)
   f:SetPoint("CENTER")
   f:SetMovable(true)
@@ -121,10 +121,10 @@ local function CreateWindow()
   f:SetScript("OnDragStop", f.StopMovingOrSizing)
   f:SetFrameStrata("HIGH")
   f:Hide()
-  table.insert(UISpecialFrames, "ProfessionsAddonWindow") -- close with Escape
+  table.insert(UISpecialFrames, "ProfitWindow") -- close with Escape
   f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   f.title:SetPoint("TOP", 0, -5)
-  f.title:SetText("Professions")
+  f.title:SetText("Profit")
 
   -- Top bar: filter, profession, search.
   f.filterButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -274,14 +274,14 @@ end
 local exportWindow
 function ns.ShowExport()
   if not exportWindow then
-    local f = CreateFrame("Frame", "ProfessionsAddonExportWindow", UIParent, "BasicFrameTemplateWithInset")
+    local f = CreateFrame("Frame", "ProfitExportWindow", UIParent, "BasicFrameTemplateWithInset")
     f:SetSize(460, 220)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
-    table.insert(UISpecialFrames, "ProfessionsAddonExportWindow")
+    table.insert(UISpecialFrames, "ProfitExportWindow")
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     title:SetPoint("TOP", 0, -5)
-    title:SetText("Professions: share your recordings")
+    title:SetText("Profit: share your recordings")
     local help = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     help:SetPoint("TOPLEFT", 14, -32)
     help:SetPoint("TOPRIGHT", -14, -32)

@@ -1,14 +1,14 @@
 local addonName, ns = ...
 
 -- Minimap button: click opens the window, drag moves it around the minimap edge.
--- Position and visibility are saved in ProfessionsDB.minimap = { angle = degrees, hide = bool }.
+-- Position and visibility are saved in ProfitDB.minimap = { angle = degrees, hide = bool }.
 
 local ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local button
 
 local function Settings()
-  ProfessionsDB.minimap = ProfessionsDB.minimap or { angle = 200 }
-  return ProfessionsDB.minimap
+  ProfitDB.minimap = ProfitDB.minimap or { angle = 200 }
+  return ProfitDB.minimap
 end
 
 local function Place()
@@ -27,7 +27,7 @@ local function OnDragUpdate()
 end
 
 local function Create()
-  button = CreateFrame("Button", "ProfessionsAddonMinimapButton", Minimap)
+  button = CreateFrame("Button", "ProfitMinimapButton", Minimap)
   button:SetSize(31, 31)
   button:SetFrameStrata("MEDIUM")
   button:SetFrameLevel(8)
@@ -54,7 +54,7 @@ local function Create()
   button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
   button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Professions")
+    GameTooltip:AddLine("Profit")
     GameTooltip:AddLine("Click to open. Drag to move.", 1, 1, 1)
     GameTooltip:AddLine("/prof minimap to hide this button.", 0.6, 0.6, 0.6)
     GameTooltip:Show()
@@ -67,7 +67,7 @@ function ns.ToggleMinimapButton()
   local settings = Settings()
   settings.hide = not settings.hide
   button:SetShown(not settings.hide)
-  print("Professions: minimap button " .. (settings.hide and "hidden; /prof minimap to show it again" or "shown"))
+  print("Profit: minimap button " .. (settings.hide and "hidden; /prof minimap to show it again" or "shown"))
 end
 
 local frame = CreateFrame("Frame")

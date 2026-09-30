@@ -10,7 +10,7 @@ local addonName, ns = ...
 --   x {issue, ...} data problems; such recipes are likely not obtainable
 -- Data/Items.lua, keyed by item ID: n name, q quality, b vendor buy price, v vendor sell price (copper),
 --   vs sold by vendors in unlimited supply, vl sold by vendors in limited supply
--- ProfessionsDB (see Record.lua) adds trainer skills and merchant items seen since the data was built.
+-- ProfitDB (see Record.lua) adds trainer skills and merchant items seen since the data was built.
 
 local AH_CUT = 0.05 -- faction auction house; neutral auction houses aren't supported
 
@@ -23,7 +23,7 @@ local function AuctionPrice(itemID)
 end
 
 local function Recorded(section, key)
-  return ProfessionsDB and ProfessionsDB[section] and ProfessionsDB[section][key]
+  return ProfitDB and ProfitDB[section] and ProfitDB[section][key]
 end
 
 -- "unlimited", "limited" or nil.
@@ -289,15 +289,15 @@ local function ProfessionName(text)
   return false
 end
 
-SLASH_PROFESSIONSADDON1 = "/professions"
-SLASH_PROFESSIONSADDON2 = "/prof"
-SlashCmdList.PROFESSIONSADDON = function(msg)
+SLASH_PROFIT1 = "/profit"
+SLASH_PROFIT2 = "/prof"
+SlashCmdList.PROFIT = function(msg)
   msg = strtrim(msg or "")
   local cmd, rest = msg:match("^(%S*)%s*(.-)$")
   if cmd == "" then
     if ns.ToggleWindow then ns.ToggleWindow() end
   elseif cmd == "help" then
-    print("/prof - open the Professions window")
+    print("/prof - open the Profit window")
     print("/prof top [count] [profession] - most profitable known or learnable crafts")
     print("/prof export - copy your trainer and merchant recordings to share")
     print("/prof minimap - show or hide the minimap button")
