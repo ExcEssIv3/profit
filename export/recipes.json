@@ -85168,13 +85168,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 50,
+    "trainer": 50,
     "yellow": 75,
     "grey": 110
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -85560,13 +85560,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 55,
+    "trainer": 55,
     "yellow": 80,
     "grey": 115
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -85673,13 +85673,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 60,
+    "trainer": 60,
     "yellow": 85,
     "grey": 120
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -85705,13 +85705,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 60,
+    "trainer": 60,
     "yellow": 85,
     "grey": 120
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -85966,13 +85966,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 80,
+    "trainer": 80,
     "yellow": 90,
     "grey": 110
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -86079,13 +86079,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 70,
+    "trainer": 70,
     "yellow": 95,
     "grey": 130
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -86115,13 +86115,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 70,
+    "trainer": 70,
     "yellow": 95,
     "grey": 130
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -86847,13 +86847,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 100,
+    "trainer": 100,
     "yellow": 110,
     "grey": 120
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -86879,13 +86879,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 110,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -86956,13 +86956,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 110,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -87217,13 +87217,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 110,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -87253,13 +87253,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 110,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -87596,13 +87596,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 105,
+    "trainer": 105,
     "yellow": 125,
     "grey": 155
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -88028,13 +88028,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 100,
+    "trainer": 100,
     "yellow": 125,
     "grey": 160
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -88064,13 +88064,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 120,
+    "trainer": 120,
     "yellow": 130,
     "grey": 140
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -88464,13 +88464,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 110,
+    "trainer": 110,
     "yellow": 130,
     "grey": 160
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -88765,13 +88765,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 115,
+    "trainer": 115,
     "yellow": 135,
     "grey": 165
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -89122,13 +89122,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 125,
+    "trainer": 125,
     "yellow": 145,
     "grey": 175
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -89167,11 +89167,12 @@
    "station": "Spinning Wheel",
    "skill": {
     "learn": 140,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 145,
     "grey": 145
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -89244,11 +89245,12 @@
    "station": "Spinning Wheel",
    "skill": {
     "learn": 140,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 145,
     "grey": 145
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -89382,11 +89384,12 @@
    "station": "Spinning Wheel",
    "skill": {
     "learn": 140,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 145,
     "grey": 145
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -89431,11 +89434,12 @@
    "station": "Spinning Wheel",
    "skill": {
     "learn": 140,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 145,
     "grey": 145
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -89480,11 +89484,12 @@
    "station": "Spinning Wheel",
    "skill": {
     "learn": 140,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 145,
     "grey": 145
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -89635,11 +89640,12 @@
    "station": "Spinning Wheel",
    "skill": {
     "learn": 140,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 145,
     "grey": 145
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -89875,13 +89881,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 125,
+    "trainer": 125,
     "yellow": 145,
     "grey": 175
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
