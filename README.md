@@ -14,10 +14,13 @@ ln -s "$PWD" "/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/Pr
 
 In game, after an Auctionator scan:
 
-- `/prof`: opens the window. Filter (Known + learnable / Known only / All recipes) and
-  profession buttons cycle on click (right-click goes back); click a column to sort and a
-  recipe for its breakdown; clicking a recipe you know also opens it in your profession window. Recipe names are colored by skill-up chance at your skill; grey
-  recipes are listed too, since they can still be profitable.
+- `/prof`: opens the window. Dropdowns pick the filter (Known only, the default / Known +
+  learnable / All recipes) and the profession (all, your main professions, i.e. the primary
+  ones you have, or one profession); click a column to sort and a recipe for its breakdown;
+  clicking a recipe you know also opens it in your profession window. The Skill column shows
+  where an unlearned recipe comes from (trainer, pattern or both) and the skill to learn it.
+  Recipe names are colored by skill-up chance at your skill; grey recipes are listed too,
+  since they can still be profitable.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value and profit
 - `/prof export`: a string of your trainer and merchant recordings to copy and share

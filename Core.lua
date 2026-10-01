@@ -16,6 +16,16 @@ local AH_CUT = 0.05 -- faction auction house; neutral auction houses aren't supp
 
 ns.ProfessionNames = {}
 for _, recipe in pairs(ns.Recipes) do ns.ProfessionNames[recipe.p] = true end
+ns.SecondaryProfessions = { Cooking = true, ["First Aid"] = true, Fishing = true }
+
+-- This character's primary professions, as a set, e.g. { Tailoring = true, Enchanting = true }.
+function ns.MainProfessions()
+  local set = {}
+  for name in pairs(ns.ProfessionNames) do
+    if ns.SkillLevel(name) and not ns.SecondaryProfessions[name] then set[name] = true end
+  end
+  return set
+end
 
 local function AuctionPrice(itemID)
   local ok, price = pcall(Auctionator.API.v1.GetAuctionPriceByItemID, addonName, itemID)
@@ -76,14 +86,17 @@ function ns.ItemName(itemID)
 end
 local ItemName = ns.ItemName
 
+local GOLD = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:0|t"
+local SILVER = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:0|t"
+local COPPER = "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:2:0|t"
 function ns.FormatMoney(copper)
   if not copper then return "no price" end
   local sign = copper < 0 and "-" or ""
   copper = math.floor(math.abs(copper) + 0.5)
   local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
-  if g > 0 then return string.format("%s%dg %ds %dc", sign, g, s, c) end
-  if s > 0 then return string.format("%s%ds %dc", sign, s, c) end
-  return string.format("%s%dc", sign, c)
+  if g > 0 then return string.format("%s%d%s %d%s %d%s", sign, g, GOLD, s, SILVER, c, COPPER) end
+  if s > 0 then return string.format("%s%d%s %d%s", sign, s, SILVER, c, COPPER) end
+  return string.format("%s%d%s", sign, c, COPPER)
 end
 local FormatMoney = ns.FormatMoney
 
@@ -156,6 +169,7 @@ end
 --           including ones whose learn level hasn't been recorded (learnable = nil)
 --   "known" known recipes only
 --   "all"   every recipe
+-- `profession` is one profession's name, a set of names (see ns.MainProfessions), or nil for all.
 -- Recipes that make no item (enchants) or look unobtainable (data issues) are left out.
 -- Grey recipes are kept: they can still be profitable.
 function ns.Rank(filter, profession, search)
@@ -164,7 +178,7 @@ function ns.Rank(filter, profession, search)
   local rows = {}
   for spellID, recipe in pairs(ns.Recipes) do
     local include = recipe.m and not recipe.x
-      and (not profession or recipe.p == profession)
+      and (not profession or recipe.p == profession or (type(profession) == "table" and profession[recipe.p]))
       and (not search or recipe.n:lower():find(search, 1, true))
     if include and filter ~= "all" then
       local known = ns.IsKnown(spellID)

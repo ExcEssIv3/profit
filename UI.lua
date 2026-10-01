@@ -10,16 +10,16 @@ local addonName, ns = ...
 local ROWS, ROW_HEIGHT = 18, 18
 local FILTERS = { { "mine", "Known + learnable" }, { "known", "Known only" }, { "all", "All recipes" } }
 local COLUMNS = { -- key, title, width, justify
-  { "name", "Recipe", 210, "LEFT" },
-  { "yellow", "Skill", 80, "LEFT" },
+  { "profit", "Profit", 100, "RIGHT" },
+  { "name", "Recipe", 200, "LEFT" },
+  { "yellow", "Skill", 110, "LEFT" },
   { "cost", "Cost", 90, "RIGHT" },
   { "revenue", "Sells for", 90, "RIGHT" },
-  { "profit", "Profit", 90, "RIGHT" },
 }
 local LIST_WIDTH = 0
 for _, c in ipairs(COLUMNS) do LIST_WIDTH = LIST_WIDTH + c[3] end
 
-local state = { filter = 1, profession = nil, search = "", sortKey = "profit", ascending = false, offset = 0 }
+local state = { filter = 2, profession = nil, search = "", sortKey = "profit", ascending = false, offset = 0 }
 local rows, window, Update = {}
 
 local function Money(copper, colorSign)
@@ -29,8 +29,9 @@ local function Money(copper, colorSign)
   return text
 end
 
--- Professions to cycle through: the character's own, or every profession for "All recipes"
--- (and when no professions have been detected yet).
+-- Profession dropdown choices: the character's own professions, or every profession for
+-- "All recipes" (and when no professions have been detected yet). state.profession is false for
+-- all professions, "main" for the character's primary professions, or a profession's name.
 local function ProfessionChoices()
   local list = {}
   for name in pairs(ns.ProfessionNames) do
@@ -38,19 +39,29 @@ local function ProfessionChoices()
   end
   if #list == 0 then for name in pairs(ns.ProfessionNames) do table.insert(list, name) end end
   table.sort(list)
-  table.insert(list, 1, false) -- all professions
-  return list
+  local choices = { { false, "All professions" } }
+  if next(ns.MainProfessions()) then table.insert(choices, { "main", "Main professions" }) end
+  for _, name in ipairs(list) do table.insert(choices, { name, name }) end
+  return choices
 end
 
+local function ProfessionLabel()
+  if state.profession == "main" then return "Main professions" end
+  return state.profession or "All professions"
+end
+
+-- Where an unknown recipe is learned: "trainer 40", "pattern 15", "trainer/pattern 15".
+local SOURCE_LABELS = { trainer = "trainer", item = "pattern", trainer_inferred = "trainer?" }
 local function SkillText(e)
-  local learn = ns.LearnSkill(e.spellID)
   local text
   if e.known then
     text = "known"
-  elseif learn then
-    text = "learn " .. learn
   else
-    text = "learn ?"
+    local labels = {}
+    for _, source in ipairs(ns.Sources(e.spellID)) do
+      if SOURCE_LABELS[source] then table.insert(labels, SOURCE_LABELS[source]) end
+    end
+    text = (#labels > 0 and table.concat(labels, "/") or "learn") .. " " .. (ns.LearnSkill(e.spellID) or "?")
   end
   local code = e.color and ns.ColorCodes[e.color]
   return code and ("|c" .. code .. text .. "|r") or text
@@ -66,10 +77,12 @@ end
 function Update()
   if not window then return end
   local filter = FILTERS[state.filter]
-  window.filterButton:SetText(filter[2])
-  window.professionButton:SetText(state.profession or "All professions")
+  window.filterDropdown:Refresh(filter[2])
+  window.professionDropdown:Refresh(ProfessionLabel())
 
-  local list = ns.Rank(filter[1], state.profession or nil, state.search)
+  local profession = state.profession or nil
+  if profession == "main" then profession = ns.MainProfessions() end
+  local list = ns.Rank(filter[1], profession, state.search)
   for _, e in ipairs(list) do e.name, e.yellow = e.recipe.n, e.recipe.y end
   ns.SortRows(list, state.sortKey, state.ascending)
   state.list = list
@@ -110,6 +123,42 @@ function Update()
   if state.selected then ShowDetail(state.selected) end
 end
 
+-- A dropdown of choices, each { value, label }. Uses the menu system where the client has it
+-- (WowStyle1DropdownTemplate), and UIDropDownMenu otherwise. Call :Refresh(label) after the
+-- selection or the choices change. d.inset is the transparent padding on each side, to subtract
+-- when placing it.
+local function CreateDropdown(parent, name, width, choices, selected, onSelect)
+  if MenuUtil and DropdownButtonMixin then
+    local d = CreateFrame("DropdownButton", name, parent, "WowStyle1DropdownTemplate")
+    d:SetWidth(width)
+    d:SetupMenu(function(_, root)
+      for _, c in ipairs(choices()) do
+        root:CreateRadio(c[2], function() return selected() == c[1] end, function() onSelect(c[1]) end)
+      end
+    end)
+    function d:Refresh(label)
+      self:SetDefaultText(label)
+      self:GenerateMenu()
+    end
+    d.inset = 0
+    return d
+  end
+
+  local d = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate")
+  UIDropDownMenu_SetWidth(d, width - 20)
+  UIDropDownMenu_Initialize(d, function(_, level)
+    for _, c in ipairs(choices()) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text, info.checked = c[2], selected() == c[1]
+      info.func = function() onSelect(c[1]) end
+      UIDropDownMenu_AddButton(info, level)
+    end
+  end)
+  function d:Refresh(label) UIDropDownMenu_SetText(self, label) end
+  d.inset = 16
+  return d
+end
+
 local function CreateWindow()
   local f = CreateFrame("Frame", "ProfitWindow", UIParent, "BasicFrameTemplateWithInset")
   f:SetSize(LIST_WIDTH + 330, 470)
@@ -127,32 +176,26 @@ local function CreateWindow()
   f.title:SetText("Profit")
 
   -- Top bar: filter, profession, search.
-  f.filterButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-  f.filterButton:SetSize(140, 22)
-  f.filterButton:SetPoint("TOPLEFT", 12, -30)
-  f.filterButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  f.filterButton:SetScript("OnClick", function(_, button)
-    state.filter = (state.filter + (button == "RightButton" and #FILTERS - 1 or 1) - 1) % #FILTERS + 1
-    state.offset = 0
+  f.filterDropdown = CreateDropdown(f, "ProfitFilterDropdown", 140, function()
+    local choices = {}
+    for i, filter in ipairs(FILTERS) do table.insert(choices, { i, filter[2] }) end
+    return choices
+  end, function() return state.filter end, function(value)
+    state.filter, state.offset = value, 0
     Update()
   end)
+  f.filterDropdown:SetPoint("TOPLEFT", 12 - f.filterDropdown.inset, -30)
 
-  f.professionButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-  f.professionButton:SetSize(140, 22)
-  f.professionButton:SetPoint("LEFT", f.filterButton, "RIGHT", 6, 0)
-  f.professionButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  f.professionButton:SetScript("OnClick", function(_, button)
-    local choices, index = ProfessionChoices(), 1
-    for i, name in ipairs(choices) do if name == (state.profession or false) then index = i end end
-    index = (index + (button == "RightButton" and #choices - 1 or 1) - 1) % #choices + 1
-    state.profession = choices[index] or nil
-    state.offset = 0
-    Update()
-  end)
+  f.professionDropdown = CreateDropdown(f, "ProfitProfessionDropdown", 140, ProfessionChoices,
+    function() return state.profession or false end, function(value)
+      state.profession, state.offset = value, 0
+      Update()
+    end)
+  f.professionDropdown:SetPoint("LEFT", f.filterDropdown, "RIGHT", 6 - 2 * f.filterDropdown.inset, 0)
 
   local search = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
   search:SetSize(160, 20)
-  search:SetPoint("LEFT", f.professionButton, "RIGHT", 14, 0)
+  search:SetPoint("LEFT", f.professionDropdown, "RIGHT", 14 - f.professionDropdown.inset, 0)
   search:SetAutoFocus(false)
   search:SetScript("OnTextChanged", function(self)
     state.search, state.offset = self:GetText(), 0
