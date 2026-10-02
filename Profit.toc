@@ -15,4 +15,5 @@ Core.lua
 Record.lua
 Known.lua
 UI.lua
+Changelog.lua
 Minimap.lua

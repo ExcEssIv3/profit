@@ -402,6 +402,7 @@ SlashCmdList.PROFIT = function(msg)
     print("/prof export - copy your trainer and merchant recordings to share")
     print("/prof minimap - show or hide the minimap button")
     print("/prof debug - which game APIs Profit uses on this client")
+    print("/prof changelog - what's new in each update")
     print("/prof <recipe name> - cost and profit breakdown for one recipe")
   elseif cmd == "top" then
     local count, profession = rest:match("^(%d*)%s*(.-)$")
@@ -410,6 +411,8 @@ SlashCmdList.PROFIT = function(msg)
     PrintTop(tonumber(count) or 10, name)
   elseif cmd == "export" then
     if ns.ShowExport then ns.ShowExport() end
+  elseif cmd == "changelog" then
+    if ns.ShowChangelog then ns.ShowChangelog() end
   elseif cmd == "debug" then
     PrintDebug()
   elseif cmd == "minimap" then

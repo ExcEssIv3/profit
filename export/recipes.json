@@ -9141,13 +9141,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 75,
+    "trainer": 75,
     "yellow": 75,
     "grey": 95
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -9251,13 +9251,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 75,
+    "trainer": 75,
     "yellow": 80,
     "grey": 85
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -9791,13 +9791,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 65,
+    "trainer": 65,
     "yellow": 90,
     "grey": 115
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10008,13 +10008,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 100,
+    "trainer": 100,
     "yellow": 100,
     "grey": 125
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10036,13 +10036,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 100,
+    "trainer": 100,
     "yellow": 100,
     "grey": 115
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10064,13 +10064,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 100,
+    "trainer": 100,
     "yellow": 100,
     "grey": 115
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10136,13 +10136,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 70,
+    "trainer": 70,
     "yellow": 100,
     "grey": 130
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10267,13 +10267,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 80,
+    "trainer": 80,
     "yellow": 110,
     "grey": 140
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10454,13 +10454,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 70,
+    "trainer": 70,
     "yellow": 110,
     "grey": 150
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10633,13 +10633,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 115,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10853,13 +10853,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 115,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -10968,13 +10968,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 85,
+    "trainer": 85,
     "yellow": 115,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11053,13 +11053,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 90,
+    "trainer": 90,
     "yellow": 120,
     "grey": 150
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11083,13 +11083,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 80,
+    "trainer": 80,
     "yellow": 120,
     "grey": 150
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11113,13 +11113,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 80,
+    "trainer": 80,
     "yellow": 120,
     "grey": 150
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11245,13 +11245,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 95,
+    "trainer": 95,
     "yellow": 125,
     "grey": 155
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11330,13 +11330,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 125,
+    "trainer": 125,
     "yellow": 125,
     "grey": 145
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11411,13 +11411,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 125,
+    "trainer": 125,
     "yellow": 125,
     "grey": 130
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11445,13 +11445,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 95,
+    "trainer": 95,
     "yellow": 125,
     "grey": 155
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11712,13 +11712,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 125,
+    "trainer": 125,
     "yellow": 130,
     "grey": 135
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -11954,13 +11954,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 105,
+    "trainer": 105,
     "yellow": 135,
     "grey": 165
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -12004,13 +12004,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 105,
+    "trainer": 105,
     "yellow": 135,
     "grey": 165
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -12042,13 +12042,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 105,
+    "trainer": 105,
     "yellow": 135,
     "grey": 165
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -12305,13 +12305,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 110,
+    "trainer": 110,
     "yellow": 140,
     "grey": 170
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -12585,13 +12585,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 110,
+    "trainer": 110,
     "yellow": 140,
     "grey": 170
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -12878,13 +12878,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 120,
+    "trainer": 120,
     "yellow": 150,
     "grey": 180
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -12967,13 +12967,13 @@
    ],
    "station": "Anvil",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 100,
+    "trainer": 100,
     "yellow": 155,
     "grey": 185
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -13283,11 +13283,12 @@
    "station": "Anvil",
    "skill": {
     "learn": 150,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 155,
     "grey": 155
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -13326,11 +13327,12 @@
    "station": "Anvil",
    "skill": {
     "learn": 150,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 155,
     "grey": 155
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -13369,11 +13371,12 @@
    "station": "Anvil",
    "skill": {
     "learn": 150,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 155,
     "grey": 155
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -13463,11 +13466,12 @@
    "station": "Anvil",
    "skill": {
     "learn": 150,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 155,
     "grey": 155
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -13694,11 +13698,12 @@
    "station": "Anvil",
    "skill": {
     "learn": 150,
-    "trainer": null,
+    "trainer": 150,
     "yellow": 155,
     "grey": 155
    },
    "sources": [
+    "trainer",
     "item"
    ],
    "recipe_items": [
@@ -82978,13 +82983,13 @@
    "tools": [],
    "station": null,
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 20,
+    "trainer": 20,
     "yellow": null,
     "grey": null
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83106,13 +83111,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 65,
+    "trainer": 65,
     "yellow": 50,
     "grey": 75
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83138,13 +83143,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 65,
+    "trainer": 65,
     "yellow": 65,
     "grey": 115
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83166,13 +83171,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 75,
+    "trainer": 75,
     "yellow": 100,
     "grey": 125
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83194,13 +83199,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 125,
+    "trainer": 125,
     "yellow": 130,
     "grey": 140
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83226,13 +83231,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 165,
+    "trainer": 165,
     "yellow": 165,
     "grey": 165
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83254,13 +83259,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 155,
+    "trainer": 155,
     "yellow": 170,
     "grey": 185
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83282,13 +83287,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 175,
+    "trainer": 175,
     "yellow": 175,
     "grey": 175
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83338,13 +83343,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 230,
+    "trainer": 230,
     "yellow": 230,
     "grey": 230
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83366,13 +83371,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 250,
+    "trainer": 250,
     "yellow": 250,
     "grey": 250
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83398,13 +83403,13 @@
    "tools": [],
    "station": "Forge",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 275,
+    "trainer": 275,
     "yellow": 275,
     "grey": 275
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -83426,13 +83431,13 @@
    "tools": [],
    "station": "Molten Foundry",
    "skill": {
-    "learn": null,
-    "trainer": null,
+    "learn": 300,
+    "trainer": 300,
     "yellow": 300,
     "grey": 315
    },
    "sources": [
-    "trainer_inferred"
+    "trainer"
    ],
    "recipe_items": [],
    "issues": []
@@ -104551,7 +104556,7 @@
    "quality": 1,
    "buy_price": 50,
    "sell_price": 12,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "2687": {
    "name": "Dry Pork Ribs",
@@ -104887,7 +104892,7 @@
    "quality": 1,
    "buy_price": 50,
    "sell_price": 12,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "2924": {
    "name": "Crocolisk Meat",
@@ -108058,7 +108063,7 @@
    "quality": 1,
    "buy_price": 400,
    "sell_price": 100,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "6275": {
    "name": "Pattern: Greater Adept's Robe",
@@ -111215,7 +111220,7 @@
    "quality": 1,
    "buy_price": 10000,
    "sell_price": 2500,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "10326": {
    "name": "Pattern: Tuxedo Jacket",
@@ -117137,7 +117142,7 @@
    "quality": 1,
    "buy_price": 2000,
    "sell_price": 500,
-   "vendor": null
+   "vendor": "unlimited"
   },
   "18948": {
    "name": "Barbaric Bracers",

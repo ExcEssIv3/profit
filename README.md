@@ -26,6 +26,7 @@ In game, after an Auctionator scan:
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value and profit
 - `/prof export`: a string of your trainer and merchant recordings to copy and share
 - `/prof minimap`: show or hide the minimap button (click it to open the window, drag to move it)
+- `/prof changelog`: what's new in each update (also shown once after updating)
 - `/prof debug`: the client build, which game API each feature uses (red if one is missing),
   and what's been detected and recorded; paste it into bug reports
 

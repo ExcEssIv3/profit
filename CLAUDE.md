@@ -14,6 +14,8 @@ the data pipeline and the recording workflow.
   `ns.OpenRecipe`. Supports both modern `C_TradeSkillUI` and Classic trade skill / craft APIs.
 - `Record.lua`: records trainer skill levels and merchant items into `ProfitDB`, plus the export string.
 - `UI.lua`: the `/prof` window (dropdowns, sortable columns, detail pane) and the export window.
+- `Changelog.lua`: release notes (`ns.Changelog`) and the "what's new" popup shown once after
+  an update. Add an entry at the top for every release, written for players.
 - `Minimap.lua`: minimap button.
 - `tools/`: Python scripts that build the data from wago.tools DB2 CSVs and merge recordings
   into `export/recorded.json`.

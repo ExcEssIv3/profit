@@ -140,6 +140,7 @@ frame:RegisterEvent("MERCHANT_UPDATE")
 frame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" then
     if arg1 ~= addonName then return end
+    ns.FreshInstall = ProfitDB == nil -- no saved data yet; see Changelog.lua
     ProfitDB = ProfitDB or {}
     ProfitDB.version = 1
     ProfitDB.trainer = ProfitDB.trainer or {}
