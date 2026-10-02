@@ -8,7 +8,10 @@ local addonName, ns = ...
 -- Classic and modern UI.
 
 local ROWS, ROW_HEIGHT = 18, 18
-local FILTERS = { { "mine", "Known + learnable" }, { "known", "Known only" }, { "all", "All recipes" } }
+local FILTERS = {
+  { "known", "Known only" }, { "trainable", "Known + trainable" }, { "mine", "Known + learnable" },
+  { "all", "All recipes" },
+}
 local COLUMNS = { -- key, title, width, justify
   { "profit", "Profit", 100, "RIGHT" },
   { "name", "Recipe", 200, "LEFT" },
@@ -19,7 +22,7 @@ local COLUMNS = { -- key, title, width, justify
 local LIST_WIDTH = 0
 for _, c in ipairs(COLUMNS) do LIST_WIDTH = LIST_WIDTH + c[3] end
 
-local state = { filter = 2, profession = nil, search = "", sortKey = "profit", ascending = false, offset = 0 }
+local state = { filter = 1, profession = nil, search = "", sortKey = "profit", ascending = false, offset = 0 }
 local rows, window, Update = {}
 
 local function Money(copper, colorSign)

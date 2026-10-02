@@ -164,10 +164,27 @@ function ns.CanLearn(spellID)
   return skill >= learn
 end
 
+-- A trainer teaches it and this character's skill is high enough (or the trainer's level isn't
+-- recorded). The trainer's level, not the lowest learn level: a pattern may need less skill.
+local function TrainableNow(spellID)
+  local skill = ns.SkillLevel(ns.Recipes[spellID].p)
+  if not skill then return false end
+  for _, source in ipairs(ns.Sources(spellID)) do
+    if source == "trainer" then
+      local trainer = TrainerSkill(spellID)
+      return not trainer or skill >= trainer
+    end
+    if source == "trainer_inferred" then return true end
+  end
+  return false
+end
+
 -- Recipes to rank, each with its evaluation. Filters:
 --   "mine"  (default) this character's professions: known recipes plus ones learnable now,
 --           including ones whose learn level hasn't been recorded (learnable = nil)
 --   "known" known recipes only
+--   "trainable" known recipes plus ones a trainer teaches at the character's skill, including
+--           probable trainer recipes ("trainer_inferred"); leaves out pattern-only recipes
 --   "all"   every recipe
 -- `profession` is one profession's name, a set of names (see ns.MainProfessions), or nil for all.
 -- Recipes that make no item (enchants) or look unobtainable (data issues) are left out.
@@ -184,6 +201,8 @@ function ns.Rank(filter, profession, search)
       local known = ns.IsKnown(spellID)
       if filter == "known" then
         include = known
+      elseif filter == "trainable" then
+        include = known or TrainableNow(spellID)
       else
         include = ns.SkillLevel(recipe.p) ~= nil and (known or ns.CanLearn(spellID) ~= false)
       end
@@ -303,6 +322,73 @@ local function ProfessionName(text)
   return false
 end
 
+-- /prof debug: which game API each feature uses on this client. Each feature lists alternatives
+-- in the order the code tries them, as { name, function, ... }; the first whose functions all
+-- exist is in use. Keep in step with the code when adding or changing an API call.
+local API_FEATURES = {
+  { "Prices", { "Auctionator", "Auctionator.API.v1.GetAuctionPriceByItemID" } },
+  { "Price updates", { "Auctionator", "Auctionator.API.v1.RegisterForDBUpdate" }, optional = true },
+  { "Skill levels", { "skill list", "GetNumSkillLines", "GetSkillLineInfo" },
+    { "professions", "GetProfessions", "GetProfessionInfo" } },
+  { "Known recipes", { "C_TradeSkillUI", "C_TradeSkillUI.GetAllRecipeIDs", "C_TradeSkillUI.GetRecipeInfo" },
+    { "Classic trade skills", "GetTradeSkillLine", "GetNumTradeSkills", "GetTradeSkillInfo" } },
+  { "Known recipes (craft window)", { "Classic crafts", "GetCraftDisplaySkillLine", "GetNumCrafts", "GetCraftInfo" },
+    optional = true },
+  { "Open recipe", { "C_TradeSkillUI", "C_TradeSkillUI.OpenRecipe" },
+    { "select in open Classic window", "GetTradeSkillLine", "GetNumTradeSkills", "GetTradeSkillInfo" } },
+  { "Trainer recording", { "trainer services", "GetNumTrainerServices", "GetTrainerServiceInfo",
+    "GetTrainerServiceSkillReq" } },
+  { "Trainer filters", { "trainer filters", "GetTrainerServiceTypeFilter", "SetTrainerServiceTypeFilter" },
+    optional = true },
+  { "Merchant recording", { "C_MerchantFrame", "C_MerchantFrame.GetItemInfo", "GetMerchantNumItems", "GetMerchantItemID" },
+    { "Classic merchant", "GetMerchantItemInfo", "GetMerchantNumItems", "GetMerchantItemID" } },
+  { "Dropdowns", { "menu system", "MenuUtil", "DropdownButtonMixin" },
+    { "UIDropDownMenu", "UIDropDownMenu_Initialize", "UIDropDownMenu_SetText" } },
+}
+
+local function Exists(path)
+  local value = _G
+  for key in path:gmatch("[^.]+") do
+    if type(value) ~= "table" then return false end
+    value = value[key]
+  end
+  return value ~= nil
+end
+
+local function PrintDebug()
+  local version, build, _, interface = GetBuildInfo()
+  print(string.format("|cffffd100Profit debug|r: client %s.%s, interface %s, data build %s",
+    version, build, tostring(interface), ns.DataBuild or "?"))
+  for _, feature in ipairs(API_FEATURES) do
+    local using, missing = nil, {}
+    for a = 2, #feature do
+      local alternative = feature[a]
+      local absent = {}
+      for i = 2, #alternative do
+        if not Exists(alternative[i]) then table.insert(absent, alternative[i]) end
+      end
+      if #absent == 0 then using = alternative[1] break end
+      table.insert(missing, alternative[1] .. " (no " .. table.concat(absent, ", ") .. ")")
+    end
+    if using then
+      print(string.format("  %s: |cff40c040%s|r", feature[1], using))
+    else
+      print(string.format("  %s: %s%s|r", feature[1], feature.optional and "|cff808080not available, " or
+        "|cffff4040MISSING, ", table.concat(missing, "; ")))
+    end
+  end
+  local professions, known = {}, 0
+  for name, skill in pairs(ProfitCharDB.skills) do table.insert(professions, name .. " " .. skill) end
+  for _, recipes in pairs(ProfitCharDB.known) do for _ in pairs(recipes) do known = known + 1 end end
+  local trainer, merchant = 0, 0
+  for _ in pairs(ProfitDB.trainer) do trainer = trainer + 1 end
+  for _ in pairs(ProfitDB.merchant) do merchant = merchant + 1 end
+  table.sort(professions)
+  print(string.format("  Character: %s; %d known recipes", #professions > 0 and table.concat(professions, ", ")
+    or "no professions detected", known))
+  print(string.format("  Recorded: %d trainer recipes, %d merchant items", trainer, merchant))
+end
+
 SLASH_PROFIT1 = "/profit"
 SLASH_PROFIT2 = "/prof"
 SlashCmdList.PROFIT = function(msg)
@@ -315,6 +401,7 @@ SlashCmdList.PROFIT = function(msg)
     print("/prof top [count] [profession] - most profitable known or learnable crafts")
     print("/prof export - copy your trainer and merchant recordings to share")
     print("/prof minimap - show or hide the minimap button")
+    print("/prof debug - which game APIs Profit uses on this client")
     print("/prof <recipe name> - cost and profit breakdown for one recipe")
   elseif cmd == "top" then
     local count, profession = rest:match("^(%d*)%s*(.-)$")
@@ -323,6 +410,8 @@ SlashCmdList.PROFIT = function(msg)
     PrintTop(tonumber(count) or 10, name)
   elseif cmd == "export" then
     if ns.ShowExport then ns.ShowExport() end
+  elseif cmd == "debug" then
+    PrintDebug()
   elseif cmd == "minimap" then
     if ns.ToggleMinimapButton then ns.ToggleMinimapButton() end
   else

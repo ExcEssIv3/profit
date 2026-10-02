@@ -1,5 +1,5 @@
 {
- "build": "1.60.1.70124",
+ "build": "1.60.1.70170",
  "recipes": [
   {
    "spell": 1245250,
@@ -40152,7 +40152,7 @@
   },
   {
    "spell": 1249114,
-   "name": "Dormant  Heart of the Mountain",
+   "name": "Dormant Heart of the Mountain",
    "profession": "Enchanting",
    "makes": {
     "item": 249473,
@@ -56486,13 +56486,95 @@
    "skill": {
     "learn": 20,
     "trainer": 20,
-    "yellow": 20,
-    "grey": 25
+    "yellow": null,
+    "grey": null
    },
    "sources": [
     "trainer"
    ],
    "recipe_items": [],
+   "issues": []
+  },
+  {
+   "spell": 1263001,
+   "name": "Plague Doctor's Laboratory",
+   "profession": "First Aid",
+   "makes": {
+    "item": 279951,
+    "count": 1
+   },
+   "reagents": [
+    {
+     "item": 4470,
+     "count": 2
+    },
+    {
+     "item": 6453,
+     "count": 2
+    },
+    {
+     "item": 14530,
+     "count": 5
+    }
+   ],
+   "tools": [],
+   "station": null,
+   "skill": {
+    "learn": 300,
+    "trainer": null,
+    "yellow": null,
+    "grey": null
+   },
+   "sources": [
+    "item"
+   ],
+   "recipe_items": [
+    {
+     "item": 273118,
+     "learn_skill": 300
+    }
+   ],
+   "issues": []
+  },
+  {
+   "spell": 1262996,
+   "name": "Toxin Study",
+   "profession": "First Aid",
+   "makes": {
+    "item": 279940,
+    "count": 1
+   },
+   "reagents": [
+    {
+     "item": 6452,
+     "count": 1
+    },
+    {
+     "item": 8544,
+     "count": 2
+    },
+    {
+     "item": 4470,
+     "count": 2
+    }
+   ],
+   "tools": [],
+   "station": null,
+   "skill": {
+    "learn": 140,
+    "trainer": null,
+    "yellow": null,
+    "grey": null
+   },
+   "sources": [
+    "item"
+   ],
+   "recipe_items": [
+    {
+     "item": 273105,
+     "learn_skill": 140
+    }
+   ],
    "issues": []
   },
   {
@@ -56842,47 +56924,6 @@
     "trainer"
    ],
    "recipe_items": [],
-   "issues": []
-  },
-  {
-   "spell": 1262996,
-   "name": "Toxin Study",
-   "profession": "First Aid",
-   "makes": {
-    "item": 279940,
-    "count": 1
-   },
-   "reagents": [
-    {
-     "item": 6452,
-     "count": 1
-    },
-    {
-     "item": 8544,
-     "count": 2
-    },
-    {
-     "item": 4470,
-     "count": 2
-    }
-   ],
-   "tools": [],
-   "station": null,
-   "skill": {
-    "learn": 140,
-    "trainer": null,
-    "yellow": 140,
-    "grey": 145
-   },
-   "sources": [
-    "item"
-   ],
-   "recipe_items": [
-    {
-     "item": 273105,
-     "learn_skill": 140
-    }
-   ],
    "issues": []
   },
   {
@@ -57453,47 +57494,6 @@
    "issues": []
   },
   {
-   "spell": 1263001,
-   "name": "Plague Doctor's Laboratory",
-   "profession": "First Aid",
-   "makes": {
-    "item": 279951,
-    "count": 1
-   },
-   "reagents": [
-    {
-     "item": 4470,
-     "count": 2
-    },
-    {
-     "item": 6453,
-     "count": 2
-    },
-    {
-     "item": 14530,
-     "count": 5
-    }
-   ],
-   "tools": [],
-   "station": null,
-   "skill": {
-    "learn": 300,
-    "trainer": null,
-    "yellow": 300,
-    "grey": 300
-   },
-   "sources": [
-    "item"
-   ],
-   "recipe_items": [
-    {
-     "item": 273118,
-     "learn_skill": 300
-    }
-   ],
-   "issues": []
-  },
-  {
    "spell": 23787,
    "name": "Powerful Anti-Venom",
    "profession": "First Aid",
@@ -57555,6 +57555,51 @@
     {
      "item": 232434,
      "learn_skill": 300
+    }
+   ],
+   "issues": []
+  },
+  {
+   "spell": 44953,
+   "name": "Winter Boots",
+   "profession": "Leatherworking",
+   "makes": {
+    "item": 34086,
+    "count": 1
+   },
+   "reagents": [
+    {
+     "item": 2840,
+     "count": 1
+    },
+    {
+     "item": 2997,
+     "count": 1
+    },
+    {
+     "item": 8170,
+     "count": 4
+    },
+    {
+     "item": 14341,
+     "count": 1
+    }
+   ],
+   "tools": [],
+   "station": null,
+   "skill": {
+    "learn": 285,
+    "trainer": null,
+    "yellow": null,
+    "grey": null
+   },
+   "sources": [
+    "item"
+   ],
+   "recipe_items": [
+    {
+     "item": 34262,
+     "learn_skill": 285
     }
    ],
    "issues": []
@@ -74912,51 +74957,6 @@
    "issues": []
   },
   {
-   "spell": 44953,
-   "name": "Winter Boots",
-   "profession": "Leatherworking",
-   "makes": {
-    "item": 34086,
-    "count": 1
-   },
-   "reagents": [
-    {
-     "item": 2840,
-     "count": 1
-    },
-    {
-     "item": 2997,
-     "count": 1
-    },
-    {
-     "item": 8170,
-     "count": 4
-    },
-    {
-     "item": 14341,
-     "count": 1
-    }
-   ],
-   "tools": [],
-   "station": null,
-   "skill": {
-    "learn": 285,
-    "trainer": null,
-    "yellow": 285,
-    "grey": 290
-   },
-   "sources": [
-    "item"
-   ],
-   "recipe_items": [
-    {
-     "item": 34262,
-     "learn_skill": 285
-    }
-   ],
-   "issues": []
-  },
-  {
    "spell": 1297126,
    "name": "Bileblister Claws",
    "profession": "Leatherworking",
@@ -81951,11 +81951,11 @@
    "issues": []
   },
   {
-   "spell": 1292972,
+   "spell": 1299917,
    "name": "Spiritcaller Boots",
    "profession": "Leatherworking",
    "makes": {
-    "item": 273935,
+    "item": 276541,
     "count": 1
    },
    "reagents": [
@@ -81989,7 +81989,7 @@
    ],
    "recipe_items": [
     {
-     "item": 274003,
+     "item": 276545,
      "learn_skill": 300
     }
    ],
@@ -82446,11 +82446,11 @@
    "issues": []
   },
   {
-   "spell": 1299917,
+   "spell": 1292972,
    "name": "Spiritcaller Treads",
    "profession": "Leatherworking",
    "makes": {
-    "item": 276541,
+    "item": 273935,
     "count": 1
    },
    "reagents": [
@@ -82484,7 +82484,7 @@
    ],
    "recipe_items": [
     {
-     "item": 276545,
+     "item": 274003,
      "learn_skill": 300
     }
    ],
@@ -82980,8 +82980,80 @@
    "skill": {
     "learn": null,
     "trainer": null,
-    "yellow": 20,
-    "grey": 25
+    "yellow": null,
+    "grey": null
+   },
+   "sources": [
+    "trainer_inferred"
+   ],
+   "recipe_items": [],
+   "issues": []
+  },
+  {
+   "spell": 1263071,
+   "name": "Molten Foundry",
+   "profession": "Mining",
+   "makes": {
+    "item": 279952,
+    "count": 1
+   },
+   "reagents": [
+    {
+     "item": 12359,
+     "count": 5
+    },
+    {
+     "item": 12365,
+     "count": 2
+    },
+    {
+     "item": 6037,
+     "count": 1
+    }
+   ],
+   "tools": [],
+   "station": null,
+   "skill": {
+    "learn": null,
+    "trainer": null,
+    "yellow": null,
+    "grey": null
+   },
+   "sources": [
+    "trainer_inferred"
+   ],
+   "recipe_items": [],
+   "issues": []
+  },
+  {
+   "spell": 1262975,
+   "name": "Rock Garden",
+   "profession": "Mining",
+   "makes": {
+    "item": 279948,
+    "count": 1
+   },
+   "reagents": [
+    {
+     "item": 2838,
+     "count": 2
+    },
+    {
+     "item": 2772,
+     "count": 1
+    },
+    {
+     "item": 2842,
+     "count": 1
+    }
+   ],
+   "tools": [],
+   "station": null,
+   "skill": {
+    "learn": null,
+    "trainer": null,
+    "yellow": null,
+    "grey": null
    },
    "sources": [
     "trainer_inferred"
@@ -83126,42 +83198,6 @@
     "trainer": null,
     "yellow": 130,
     "grey": 140
-   },
-   "sources": [
-    "trainer_inferred"
-   ],
-   "recipe_items": [],
-   "issues": []
-  },
-  {
-   "spell": 1262975,
-   "name": "Rock Garden",
-   "profession": "Mining",
-   "makes": {
-    "item": 279948,
-    "count": 1
-   },
-   "reagents": [
-    {
-     "item": 2838,
-     "count": 2
-    },
-    {
-     "item": 2772,
-     "count": 1
-    },
-    {
-     "item": 2842,
-     "count": 1
-    }
-   ],
-   "tools": [],
-   "station": null,
-   "skill": {
-    "learn": null,
-    "trainer": null,
-    "yellow": 140,
-    "grey": 145
    },
    "sources": [
     "trainer_inferred"
@@ -83366,42 +83402,6 @@
     "trainer": null,
     "yellow": 275,
     "grey": 275
-   },
-   "sources": [
-    "trainer_inferred"
-   ],
-   "recipe_items": [],
-   "issues": []
-  },
-  {
-   "spell": 1263071,
-   "name": "Molten Foundry",
-   "profession": "Mining",
-   "makes": {
-    "item": 279952,
-    "count": 1
-   },
-   "reagents": [
-    {
-     "item": 12359,
-     "count": 5
-    },
-    {
-     "item": 12365,
-     "count": 2
-    },
-    {
-     "item": 6037,
-     "count": 1
-    }
-   ],
-   "tools": [],
-   "station": null,
-   "skill": {
-    "learn": null,
-    "trainer": null,
-    "yellow": 300,
-    "grey": 300
    },
    "sources": [
     "trainer_inferred"
@@ -107097,7 +107097,7 @@
   "4603": {
    "name": "Raw Spotted Yellowtail",
    "quality": 1,
-   "buy_price": 16,
+   "buy_price": 80,
    "sell_price": 4,
    "vendor": null
   },
@@ -108070,7 +108070,7 @@
   "6289": {
    "name": "Raw Longjaw Mud Snapper",
    "quality": 1,
-   "buy_price": 4,
+   "buy_price": 20,
    "sell_price": 1,
    "vendor": null
   },
@@ -108084,21 +108084,21 @@
   "6291": {
    "name": "Raw Brilliant Smallfish",
    "quality": 1,
-   "buy_price": 4,
+   "buy_price": 20,
    "sell_price": 1,
    "vendor": null
   },
   "6303": {
    "name": "Raw Slitherskin Mackerel",
    "quality": 1,
-   "buy_price": 4,
+   "buy_price": 20,
    "sell_price": 1,
    "vendor": null
   },
   "6308": {
    "name": "Raw Bristle Whisker Catfish",
    "quality": 1,
-   "buy_price": 8,
+   "buy_price": 40,
    "sell_price": 2,
    "vendor": null
   },
@@ -108112,7 +108112,7 @@
   "6317": {
    "name": "Raw Loch Frenzy",
    "quality": 1,
-   "buy_price": 8,
+   "buy_price": 40,
    "sell_price": 2,
    "vendor": null
   },
@@ -108238,14 +108238,14 @@
   "6361": {
    "name": "Raw Rainbow Fin Albacore",
    "quality": 1,
-   "buy_price": 8,
+   "buy_price": 40,
    "sell_price": 2,
    "vendor": null
   },
   "6362": {
    "name": "Raw Rockscale Cod",
    "quality": 1,
-   "buy_price": 16,
+   "buy_price": 80,
    "sell_price": 4,
    "vendor": null
   },
@@ -110226,7 +110226,7 @@
   "8365": {
    "name": "Raw Mithril Head Trout",
    "quality": 1,
-   "buy_price": 16,
+   "buy_price": 80,
    "sell_price": 4,
    "vendor": null
   },
@@ -110499,7 +110499,7 @@
   "8959": {
    "name": "Raw Spinefin Halibut",
    "quality": 1,
-   "buy_price": 640,
+   "buy_price": 3200,
    "sell_price": 160,
    "vendor": null
   },
@@ -112040,21 +112040,21 @@
    "name": "Lesser Magic Wand",
    "quality": 2,
    "buy_price": 2544,
-   "sell_price": 508,
+   "sell_price": 1,
    "vendor": null
   },
   "11288": {
    "name": "Greater Magic Wand",
    "quality": 2,
    "buy_price": 7675,
-   "sell_price": 1535,
+   "sell_price": 1,
    "vendor": null
   },
   "11289": {
    "name": "Lesser Mystic Wand",
    "quality": 2,
    "buy_price": 17905,
-   "sell_price": 3581,
+   "sell_price": 1,
    "vendor": null
   },
   "11291": {
@@ -113787,7 +113787,7 @@
    "vendor": null
   },
   "13503": {
-   "name": "Alchemists' Stone",
+   "name": "Alchemist's Stone",
    "quality": 2,
    "buy_price": 100000,
    "sell_price": 25000,
@@ -113829,7 +113829,7 @@
    "vendor": null
   },
   "13517": {
-   "name": "Recipe: Alchemists' Stone",
+   "name": "Recipe: Alchemist's Stone",
    "quality": 1,
    "buy_price": 40000,
    "sell_price": 0,
@@ -113873,7 +113873,7 @@
   "13754": {
    "name": "Raw Glossy Mightfish",
    "quality": 1,
-   "buy_price": 24,
+   "buy_price": 120,
    "sell_price": 6,
    "vendor": null
   },
@@ -113887,28 +113887,28 @@
   "13756": {
    "name": "Raw Summer Bass",
    "quality": 1,
-   "buy_price": 36,
+   "buy_price": 180,
    "sell_price": 9,
    "vendor": null
   },
   "13758": {
    "name": "Raw Redgill",
    "quality": 1,
-   "buy_price": 16,
+   "buy_price": 80,
    "sell_price": 4,
    "vendor": null
   },
   "13759": {
    "name": "Raw Nightfin Snapper",
    "quality": 1,
-   "buy_price": 40,
+   "buy_price": 200,
    "sell_price": 10,
    "vendor": null
   },
   "13760": {
    "name": "Raw Sunscale Salmon",
    "quality": 1,
-   "buy_price": 40,
+   "buy_price": 200,
    "sell_price": 10,
    "vendor": null
   },
@@ -114013,14 +114013,14 @@
   "13888": {
    "name": "Darkclaw Lobster",
    "quality": 1,
-   "buy_price": 48,
+   "buy_price": 240,
    "sell_price": 12,
    "vendor": null
   },
   "13889": {
    "name": "Raw Whitescale Salmon",
    "quality": 1,
-   "buy_price": 200,
+   "buy_price": 1000,
    "sell_price": 5,
    "vendor": null
   },
@@ -119817,7 +119817,7 @@
    "name": "Greater Mystic Wand",
    "quality": 2,
    "buy_price": 26316,
-   "sell_price": 5263,
+   "sell_price": 1,
    "vendor": null
   },
   "217308": {
@@ -120923,28 +120923,28 @@
    "name": "Twisted Nether Wand",
    "quality": 2,
    "buy_price": 26316,
-   "sell_price": 5263,
+   "sell_price": 1,
    "vendor": null
   },
   "249232": {
    "name": "Lesser Eternal Wand",
    "quality": 2,
    "buy_price": 26316,
-   "sell_price": 5263,
+   "sell_price": 1,
    "vendor": null
   },
   "249234": {
    "name": "Dreambough Wand",
    "quality": 2,
    "buy_price": 26316,
-   "sell_price": 5263,
+   "sell_price": 1,
    "vendor": null
   },
   "249237": {
    "name": "Greater Eternal Wand",
    "quality": 2,
    "buy_price": 26316,
-   "sell_price": 5263,
+   "sell_price": 1,
    "vendor": null
   },
   "249274": {
@@ -129614,7 +129614,7 @@
    "vendor": null
   },
   "273115": {
-   "name": "Blueprint: Baker's Oven",
+   "name": "Blueprint: Iron Oven",
    "quality": 2,
    "buy_price": 480000,
    "sell_price": 120000,

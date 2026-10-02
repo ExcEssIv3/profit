@@ -15,7 +15,8 @@ ln -s "$PWD" "/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/Pr
 In game, after an Auctionator scan:
 
 - `/prof`: opens the window. Dropdowns pick the filter (Known only, the default / Known +
-  learnable / All recipes) and the profession (all, your main professions, i.e. the primary
+  trainable, which leaves out recipes only learned from patterns / Known + learnable / All
+  recipes) and the profession (all, your main professions, i.e. the primary
   ones you have, or one profession); click a column to sort and a recipe for its breakdown;
   clicking a recipe you know also opens it in your profession window. The Skill column shows
   where an unlearned recipe comes from (trainer, pattern or both) and the skill to learn it.
@@ -25,6 +26,8 @@ In game, after an Auctionator scan:
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value and profit
 - `/prof export`: a string of your trainer and merchant recordings to copy and share
 - `/prof minimap`: show or hide the minimap button (click it to open the window, drag to move it)
+- `/prof debug`: the client build, which game API each feature uses (red if one is missing),
+  and what's been detected and recorded; paste it into bug reports
 
 Vendor-sold materials are priced at their vendor price; everything else uses Auctionator.
 The addon reads your profession skills from your skill list, and which recipes you know
