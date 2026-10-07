@@ -11,9 +11,11 @@
 
 Data\Items.lua
 Data\Recipes.lua
+Data\Disenchant.lua
 Core.lua
 Record.lua
 Known.lua
 UI.lua
+Tooltip.lua
 Changelog.lua
 Minimap.lua

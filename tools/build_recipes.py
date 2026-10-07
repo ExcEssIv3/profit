@@ -13,6 +13,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import db2
+from disenchant import TABLE as DISENCHANT_TABLE, required_skill
 
 PROFESSIONS = {
     "164": "Blacksmithing",
@@ -32,6 +33,7 @@ ITEM_TRIGGER_LEARN = "6"  # item effect teaches its SpellID directly (Classic st
 EFFECT_CREATE_ITEM = "24"
 EFFECT_LEARN_SPELL = "36"
 ACQUIRE_ON_SKILL_LEARN = "1"
+ITEM_FLAG_NO_DISENCHANT = 0x8000  # ItemSparse Flags_0, e.g. enchanting wands, PvP rewards
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "export" / "recipes.json"
@@ -147,6 +149,21 @@ def build(build_id, refresh=False):
             used_items.add(int(out[0]))
 
     recipes.sort(key=lambda x: (x["profession"], x["skill"]["yellow"] or 0, x["name"] or ""))
+    # Every item that can be disenchanted, not just recipe items, for the item tooltip.
+    # The client's ItemSparse lacks many items (the server sends them); the addon works those
+    # out in game from the bracket ranges, so it also needs the items flagged no-disenchant.
+    brackets, disenchant = disenchant_brackets(t("ItemDisenchantLoot"), sparse)
+    item_bracket, no_disenchant = {}, []
+    for i in sparse:
+        if not is_live_item(sparse, i):
+            continue
+        bracket = disenchant_bracket(items.get(i), sparse[i], brackets)
+        if bracket:
+            item_bracket[i] = bracket
+        elif disenchant_bracket(items.get(i), sparse[i], brackets, ignore_flag=True):
+            no_disenchant.append(int(i))
+    for results in disenchant.values():
+        used_items.update(r["item"] for r in results)
     item_table = {
         str(i): {
             "name": sparse[str(i)]["Display_lang"],
@@ -156,11 +173,55 @@ def build(build_id, refresh=False):
             "sell_price": int(sparse[str(i)]["SellPrice"]),
             # "unlimited" (priced at buy_price), "limited" (e.g. vendor recipes), or null.
             "vendor": vendor.get(str(i)),
+            # ItemDisenchantLoot bracket ID, a key of "disenchant"; null if it can't be disenchanted.
+            "disenchant": item_bracket.get(str(i)),
         }
         for i in sorted(used_items)
         if str(i) in sparse
     }
-    return {"build": build_id, "recipes": recipes, "items": item_table}
+    by_bracket = defaultdict(list)
+    for i, bracket in item_bracket.items():
+        by_bracket[bracket].append(int(i))
+    ranges = {b["ID"]: b for b in brackets}
+    return {"build": build_id, "recipes": recipes, "items": item_table,
+            "disenchant": {b: {"class": int(ranges[b]["Class"]), "quality": int(ranges[b]["Quality"]),
+                               "min_level": int(ranges[b]["MinLevel"]), "max_level": int(ranges[b]["MaxLevel"]),
+                               "skill": required_skill(int(ranges[b]["Quality"]), int(ranges[b]["MinLevel"])),
+                               "results": disenchant[b], "items": sorted(by_bracket[b])}
+                           for b in sorted(disenchant, key=int)},
+            "no_disenchant": sorted(no_disenchant)}
+
+
+def disenchant_brackets(rows, sparse):
+    """Client bracket rows, and bracket ID -> [{item, chance, min, max}] from tools/disenchant.py."""
+    by_name = {}
+    for item_id, row in sparse.items():
+        by_name.setdefault(row["Display_lang"], int(item_id))
+    brackets, results = [], {}
+    for r in rows:
+        if r["Subclass"] != "-1":
+            raise SystemExit(f"disenchant bracket {r['ID']} is for one item subclass; the addon assumes all")
+        key = (int(r["Quality"]), int(r["Class"]), int(r["MinLevel"]))
+        if key not in DISENCHANT_TABLE:
+            print(f"  warning: no disenchant results for bracket {r['ID']} {key}; its items are left out")
+            continue
+        brackets.append(r)
+        results[r["ID"]] = [
+            {"item": by_name[name], "chance": chance, "min": low, "max": high}
+            for chance, low, high, name in DISENCHANT_TABLE[key]
+        ]
+    return brackets, results
+
+
+def disenchant_bracket(item, row, brackets, ignore_flag=False):
+    if not item or not row or (not ignore_flag and int(row["Flags_0"]) & ITEM_FLAG_NO_DISENCHANT):
+        return None
+    level = int(row["ItemLevel"])
+    for b in brackets:
+        if (b["Class"] == item["ClassID"] and b["Quality"] == row["OverallQualityID"]
+                and b["Subclass"] in ("-1", item["SubclassID"]) and int(b["MinLevel"]) <= level <= int(b["MaxLevel"])):
+            return b["ID"]
+    return None
 
 
 def load_recorded():
@@ -242,9 +303,19 @@ def write_lua(data):
         item_lines.append(f"  [{item_id}]={{n={lua_str(it['name'])},q={it['quality']},b={it['buy_price']},v={it['sell_price']}{vendor}}},")
     item_lines.append("}")
 
+    de_lines = [header, "local _, ns = ...", "ns.Disenchant = {"]
+    for bracket, de in data["disenchant"].items():
+        values = (v for r in de["results"] for v in (r["item"], r["chance"], r["min"], r["max"]))
+        skill = f"s={de['skill']}," if de["skill"] is not None else ""
+        de_lines.append(f"  [{bracket}]={{c={de['class']},q={de['quality']},lo={de['min_level']},hi={de['max_level']},{skill}"
+                        f"r={lua_list(values)},i={lua_list(de['items'])}}},")
+    de_lines.append("}")
+    de_lines.append(f"ns.NoDisenchant = {lua_list(data['no_disenchant'])}")
+
     LUA_DIR.mkdir(exist_ok=True)
     (LUA_DIR / "Recipes.lua").write_text("\n".join(lines) + "\n", encoding="utf-8")
     (LUA_DIR / "Items.lua").write_text("\n".join(item_lines) + "\n", encoding="utf-8")
+    (LUA_DIR / "Disenchant.lua").write_text("\n".join(de_lines) + "\n", encoding="utf-8")
 
 
 def main():
@@ -262,7 +333,9 @@ def main():
     by_source = defaultdict(int)
     for r in data["recipes"]:
         by_source["+".join(r["sources"])] += 1
-    print(f"build {build_id}: {len(data['recipes'])} recipes, {len(data['items'])} items -> {OUT}, {LUA_DIR}/")
+    disenchantable = sum(len(de["items"]) for de in data["disenchant"].values())
+    print(f"build {build_id}: {len(data['recipes'])} recipes, {len(data['items'])} items "
+          f"({disenchantable} disenchantable in the game) -> {OUT}, {LUA_DIR}/")
     print("  " + ", ".join(f"{k}={v}" for k, v in sorted(by_source.items())))
 
 

@@ -21,13 +21,20 @@ In game, after an Auctionator scan:
   clicking a recipe you know also opens it in your profession window. The Skill column shows
   where an unlearned recipe comes from (trainer, pattern or both) and the skill to learn it.
   Recipe names are colored by skill-up chance at your skill; grey recipes are listed too,
-  since they can still be profitable.
+  since they can still be profitable. The Disenchant column is the profit from disenchanting
+  the crafted item instead of selling it, using the expected value of its materials.
+  Enchanters also get **Disenchant from AH**: gear Auctionator has priced that's worth more
+  disenchanted than it costs, leaving out items above your Enchanting skill. Clicking an item
+  with the auction house open searches for it through Auctionator.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
-- `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value and profit
-- `/prof export`: a string of your trainer and merchant recordings to copy and share
+- `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
+  and for green or better gear what it disenchants into and the disenchant profit
+- `/prof export`: a string of your trainer, merchant and disenchant recordings to copy and share
 - `/prof minimap`: show or hide the minimap button (click it to open the window, drag to move it)
+- `/prof tooltip`: show or hide the estimated disenchant value in item tooltips (on by default;
+  hold Shift for the materials and their chances)
 - `/prof changelog`: what's new in each update (also shown once after updating)
-- `/prof debug`: the client build, which game API each feature uses (red if one is missing),
+- `/prof debug`: the client build, which game API each feature uses (MISSING if one is missing),
   and what's been detected and recorded; paste it into bug reports
 
 Vendor-sold materials are priced at their vendor price; everything else uses Auctionator.
@@ -61,6 +68,15 @@ bought at the auction house).
 The client data does not include trainer skill requirements, which vendors stock an item,
 or drop sources. Those fields are `null` rather than guessed, until filled in by recordings.
 
+Items record their disenchant bracket (`disenchant`), from the client's `ItemDisenchantLoot`
+table (item class, quality, item level) and its no-disenchant item flag. What each bracket
+yields is a server loot table, not in the client data, so `tools/disenchant.py` keeps the
+Classic results by hand, along with the Enchanting skill each bracket needs (unknown for epics
+below item level 61). The top-level `disenchant` maps each bracket to its item class,
+quality and item level range, its `results`, and the items in the client data in that bracket;
+`no_disenchant` lists gear flagged as not disenchantable. The client data lacks many items (the
+server sends them), so in game the addon matches those to a bracket from `GetItemInfo`.
+
 ## Recording trainers and merchants
 
 The addon records into its saved variables (`ProfitDB`) whenever a window opens:
@@ -68,6 +84,11 @@ The addon records into its saved variables (`ProfitDB`) whenever a window opens:
 - **Trainers**: the skill needed to learn each recipe, including ones already known or not
   yet available.
 - **Merchants**: items sold for gold, and whether stock is limited (usually recipe items).
+- **Disenchants**: what each disenchanted item gave (counts per material). If a result isn't
+  in `tools/disenchant.py`'s table for that item, or the item wasn't expected to disenchant,
+  a popup asks the player to share their `/prof export`. The importer prints these as
+  `unexpected:` lines; fix `tools/disenchant.py` (or the bracket data) to match.
+  `/prof testdisenchant` makes the next disenchant show the popup, to try it out.
 
 Vendor materials start from the hand-kept list in `tools/vendor_items.txt`. To ship what
 you've recorded, log out (so WoW writes the saved variables), then:

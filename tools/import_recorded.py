@@ -6,14 +6,17 @@ Each FILE is either a SavedVariables Profit.lua (or Professions.lua, from before
 renamed), or a text file holding strings from `/prof export` (one per line, as players send
 them). "-" reads export strings from stdin.
 With no arguments, reads every account's Profit.lua under the beta client's WTF folder.
-Newer observations replace older ones; changed trainer skill levels are reported. Rerun
-tools/build_recipes.py afterwards to ship the result.
+Newer observations replace older ones; changed trainer skill levels are reported. Disenchant
+results are counts, so the larger sample of each item is kept, and results tools/disenchant.py
+doesn't predict are reported. Rerun tools/build_recipes.py afterwards to ship the result.
 """
 
 import json
 import re
 import sys
 from pathlib import Path
+
+from disenchant import TABLE as DISENCHANT_TABLE
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORDED = ROOT / "export" / "recorded.json"
@@ -84,7 +87,7 @@ def parse_saved_variables(text):
 
 def parse_export(text):
     """Parse `/prof export` strings (see ns.ExportString in Record.lua) into ProfitDB shape."""
-    db = {"trainer": {}, "merchant": {}}
+    db = {"trainer": {}, "merchant": {}, "disenchant": {}}
     for line in text.split():
         records = line.split(";")
         if records[0] != "PROF1":
@@ -99,6 +102,13 @@ def parse_export(text):
                     "price": int(price) if price.is_integer() else price, "qty": int(f[3]),
                     **({"limited": True} if f[4] == "1" else {}), "build": int(f[5]), "seen": int(f[6]),
                 }
+            elif f[0] == "d":
+                mats = {}
+                for mat in filter(None, f[8].split("|")):
+                    mat_id, n, total, low, high = mat.split(":")
+                    mats[mat_id] = {"n": int(n), "total": int(total), "min": int(low), "max": int(high)}
+                db["disenchant"][f[1]] = {"q": int(f[2]), "il": int(f[3]), "c": int(f[4]), "n": int(f[5]),
+                                          "build": int(f[6]), "seen": int(f[7]), "r": mats}
     return db
 
 
@@ -108,6 +118,33 @@ def read_db(path):
         return parse_export(text)
     saved = parse_saved_variables(text)
     return saved.get("ProfitDB") or saved.get("ProfessionsDB") or {}  # addon was "Professions" before
+
+
+def expected_disenchant(obs):
+    """Results tools/disenchant.py predicts for a recorded item, by mat name, or None."""
+    keys = [k for k in DISENCHANT_TABLE if k[0] == obs.get("q") and k[1] == obs.get("c") and k[2] <= obs.get("il", -1)]
+    return DISENCHANT_TABLE[max(keys, key=lambda k: k[2])] if keys else None
+
+
+def merge_disenchant(recorded, db, source, names, no_disenchant):
+    changed = 0
+    for item, obs in (db.get("disenchant") or {}).items():
+        item = str(item)
+        obs = {**obs, "r": {str(m): {k: v for k, v in r.items() if k != "flagged"} for m, r in obs.get("r", {}).items()}}
+        old = recorded["disenchant"].get(item)
+        if old and old["n"] >= obs["n"]:
+            continue
+        recorded["disenchant"][item] = obs
+        changed += 1
+        if int(item) in no_disenchant:
+            print(f"  unexpected: item {item} is flagged as not disenchantable but was disenchanted ({source})")
+        expected = {name: (low, high) for _, low, high, name in expected_disenchant(obs) or []}
+        for mat, r in obs["r"].items():
+            name = names.get(mat, f"item {mat}")
+            low, high = expected.get(name, (None, None))
+            if low is None or r["min"] < low or r["max"] > high:
+                print(f"  unexpected: item {item} disenchanted into {r['min']}-{r['max']}x {name} ({source})")
+    return changed
 
 
 def merge(recorded, db, source):
@@ -130,14 +167,30 @@ def main():
     paths = [Path(p) for p in sys.argv[1:]] or sorted(WTF.glob("*/SavedVariables/Profit.lua"))
     if not paths:
         raise SystemExit(f"no Profit.lua found under {WTF}; pass the path explicitly")
-    recorded = json.loads(RECORDED.read_text(encoding="utf-8")) if RECORDED.exists() else {"trainer": {}, "merchant": {}}
+    recorded = json.loads(RECORDED.read_text(encoding="utf-8")) if RECORDED.exists() else {}
+    for section in ("trainer", "merchant", "disenchant"):
+        recorded.setdefault(section, {})
+    names, no_disenchant = built_items()
     for path in paths:
-        print(f"{path}: {merge(recorded, read_db(path), path.name)} new or updated observations")
+        db = read_db(path)
+        changed = merge(recorded, db, path.name) + merge_disenchant(recorded, db, path.name, names, no_disenchant)
+        print(f"{path}: {changed} new or updated observations")
     for section in recorded:
         recorded[section] = dict(sorted(recorded[section].items(), key=lambda kv: int(kv[0])))
     RECORDED.parent.mkdir(parents=True, exist_ok=True)
     RECORDED.write_text(json.dumps(recorded, indent=1) + "\n", encoding="utf-8")
-    print(f"{RECORDED}: {len(recorded['trainer'])} trainer recipes, {len(recorded['merchant'])} merchant items")
+    print(f"{RECORDED}: {len(recorded['trainer'])} trainer recipes, {len(recorded['merchant'])} merchant items, "
+          f"{len(recorded['disenchant'])} disenchanted items")
+
+
+def built_items():
+    """From the last build_recipes.py output: item ID -> name (to compare mats by name), and the
+    item IDs flagged as not disenchantable."""
+    recipes = ROOT / "export" / "recipes.json"
+    if not recipes.exists():
+        return {}, set()
+    data = json.loads(recipes.read_text(encoding="utf-8"))
+    return {i: it["name"] for i, it in data["items"].items()}, set(data.get("no_disenchant", []))
 
 
 if __name__ == "__main__":

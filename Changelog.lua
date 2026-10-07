@@ -5,6 +5,23 @@ local addonName, ns = ...
 -- skips the popup and just records it.
 
 ns.Changelog = {
+  { "0.3.0", {
+    "Disenchanting! Item tooltips show the estimated disenchant value of weapons and armor, based on " ..
+      "Auctionator prices for the materials. Hold Shift to see each material with its chance and price. " ..
+      "Turn it off with /prof tooltip.",
+    "Enchanters get a \"Disenchant from AH\" choice in the filter: gear on the auction house worth more " ..
+      "disenchanted than it costs, from your last Auctionator scan, leaving out items above your " ..
+      "Enchanting skill. Click an item with the auction house open to search for it.",
+    "New Disenchant column: the profit from crafting an item to disenchant instead of selling it.",
+    "Recipe details list what crafted gear disenchants into, and say when disenchanting beats selling.",
+    "Profit records what your disenchants give. If one gives something Profit didn't expect, it asks " ..
+      "you to share your /prof export so the data can be fixed. /prof testdisenchant shows that popup " ..
+      "after your next disenchant, to try it.",
+    "The Profit column fits its numbers, leaving more room for recipe names, and its header no longer " ..
+      "runs into the next one.",
+    "/prof debug opens a window you can copy from, and includes the addon version.",
+    "More vendor items recorded, including several fish and patterns. Data updated for client build 70245.",
+  } },
   { "0.2.3", {
     "New \"Known + trainable\" filter: recipes you know plus ones a trainer teaches at your skill, " ..
       "leaving out recipes only learned from patterns.",

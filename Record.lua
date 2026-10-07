@@ -3,6 +3,8 @@ local addonName, ns = ...
 -- Records what the client data can't tell us, into ProfitDB (account-wide):
 --   trainer[spellID]  = { skill, prof, cost, seen, build }  skill needed to learn a trainer recipe
 --   merchant[itemID]  = { price, qty, limited, seen, build } items merchants sell for gold
+--   disenchant[itemID] = { q quality, il item level, c item class, n times disenchanted, seen, build,
+--     r = { [matID] = { n times it dropped, total count, min, max, flagged } } } disenchant results
 -- tools/import_recorded.py merges these into the shipped data.
 
 local function Build()
@@ -115,10 +117,97 @@ end
 
 ns.ScanTrainer = ScanTrainer
 
+-- Disenchanting: the cast tells us a disenchant happened, the loot window what it gave. The item
+-- comes from the loot source where the client has it, else from the bag item clicked while
+-- targeting the spell.
+local DISENCHANT = 13262
+local GetItemInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
+local GetContainerItemID = C_Container and C_Container.GetContainerItemID or GetContainerItemID
+local clickedItem, pendingDisenchant -- { itemID, time }
+
+-- Left-clicking a bag item while targeting picks it up; right-clicking (and /use) uses it.
+local function OnBagItemClick(bag, slot)
+  if SpellIsTargeting and SpellIsTargeting() and GetContainerItemID then
+    clickedItem = { itemID = GetContainerItemID(bag, slot), time = GetTime() }
+  end
+end
+for _, name in ipairs({ "UseContainerItem", "PickupContainerItem" }) do
+  if C_Container and C_Container[name] then hooksecurefunc(C_Container, name, OnBagItemClick) end
+  if _G[name] then hooksecurefunc(name, OnBagItemClick) end
+end
+
+local function LootSourceItem()
+  if not (GetLootSourceInfo and C_Item and C_Item.GetItemIDByGUID) then return nil end
+  local guid = GetLootSourceInfo(1)
+  return guid and guid:match("^Item%-") and C_Item.GetItemIDByGUID(guid) or nil
+end
+
+StaticPopupDialogs.PROFIT_DISENCHANT_FOUND = {
+  text = "%s", button1 = "Copy export", button2 = "Close",
+  OnAccept = function() ns.ShowExport() end,
+  timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+}
+
+-- /prof testdisenchant: treat every result of the next disenchant as unexpected, to try the popup.
+-- The disenchant is still recorded; the test doesn't stop real surprises from popping up later.
+local testNextDisenchant = false
+function ns.TestNextDisenchant()
+  testNextDisenchant = true
+  print("Profit: your next disenchant will show the \"didn't expect\" popup as a test.")
+end
+
+-- Record one disenchant's loot, and ask the player to share anything the data didn't predict.
+local function RecordDisenchant(itemID)
+  local test = testNextDisenchant
+  testNextDisenchant = false
+  local _, link, quality, level, _, _, _, _, _, _, _, class = GetItemInfo(itemID)
+  local rec = ProfitDB.disenchant[itemID] or { r = {} }
+  ProfitDB.disenchant[itemID] = rec
+  rec.q, rec.il, rec.c = quality, level, class
+  rec.n, rec.seen, rec.build = (rec.n or 0) + 1, time(), Build()
+
+  local _, outcomes = ns.DisenchantValue(itemID)
+  local expected = {}
+  for _, o in ipairs(outcomes or {}) do expected[o.itemID] = o end
+  local surprises = {}
+  for slot = 1, GetNumLootItems() do
+    local matID = ItemIDFromLink(GetLootSlotLink(slot))
+    local count = select(3, GetLootSlotInfo(slot)) or 1
+    if matID then
+      local mat = rec.r[matID] or { n = 0, total = 0 }
+      rec.r[matID] = mat
+      mat.n, mat.total = mat.n + 1, mat.total + count
+      mat.min, mat.max = math.min(mat.min or count, count), math.max(mat.max or count, count)
+      local o = expected[matID]
+      if test then
+        table.insert(surprises, count .. "x " .. ns.ItemName(matID))
+      elseif (not o or count < o.min or count > o.max) and not mat.flagged then
+        mat.flagged = true
+        table.insert(surprises, count .. "x " .. ns.ItemName(matID))
+      end
+    end
+  end
+  if #surprises > 0 then
+    StaticPopup_Show("PROFIT_DISENCHANT_FOUND", string.format("%sProfit: disenchanting %s gave %s, which " ..
+      "Profit didn't expect%s.\n\nPlease leave a comment at github.com/ExcEssIv3/profit/issues with your " ..
+      "/prof export so we can add it.", test and "(Test) " or "", link or ns.ItemName(itemID), table.concat(surprises, ", "),
+      outcomes and "" or " (it didn't know this item could be disenchanted)"))
+  end
+end
+
+local function OnLoot()
+  local pending = pendingDisenchant
+  if not pending or GetTime() - pending.time > 5 then return end
+  pendingDisenchant = nil
+  local itemID = LootSourceItem() or pending.itemID
+  if itemID then RecordDisenchant(itemID) end
+end
+
 -- Everything recorded, as one line of text players can copy and send us. tools/import_recorded.py
 -- reads it. Format: "PROF1" then ";"-separated records:
 --   t,spellID,skill,build,seen            trainer recipe
 --   m,itemID,price,qty,limited,build,seen merchant item (limited is 1 or 0)
+--   d,itemID,quality,itemLevel,class,times,build,seen,mat:n:total:min:max|...  disenchant results
 function ns.ExportString()
   local parts = { "PROF1" }
   for spellID, t in pairs(ProfitDB.trainer) do
@@ -127,6 +216,14 @@ function ns.ExportString()
   for itemID, m in pairs(ProfitDB.merchant) do
     table.insert(parts, string.format("m,%d,%s,%d,%d,%d,%d", itemID, tostring(m.price), m.qty or 1,
       m.limited and 1 or 0, m.build or 0, m.seen or 0))
+  end
+  for itemID, d in pairs(ProfitDB.disenchant) do
+    local mats = {}
+    for matID, m in pairs(d.r) do
+      table.insert(mats, string.format("%d:%d:%d:%d:%d", matID, m.n, m.total, m.min, m.max))
+    end
+    table.insert(parts, string.format("d,%d,%d,%d,%d,%d,%d,%d,%s", itemID, d.q or -1, d.il or -1, d.c or -1,
+      d.n, d.build or 0, d.seen or 0, table.concat(mats, "|")))
   end
   return table.concat(parts, ";")
 end
@@ -137,7 +234,10 @@ frame:RegisterEvent("TRAINER_SHOW")
 frame:RegisterEvent("TRAINER_UPDATE")
 frame:RegisterEvent("MERCHANT_SHOW")
 frame:RegisterEvent("MERCHANT_UPDATE")
-frame:SetScript("OnEvent", function(_, event, arg1)
+frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+frame:RegisterEvent("LOOT_READY")
+frame:RegisterEvent("LOOT_OPENED")
+frame:SetScript("OnEvent", function(_, event, arg1, _, arg3)
   if event == "ADDON_LOADED" then
     if arg1 ~= addonName then return end
     ns.FreshInstall = ProfitDB == nil -- no saved data yet; see Changelog.lua
@@ -145,6 +245,14 @@ frame:SetScript("OnEvent", function(_, event, arg1)
     ProfitDB.version = 1
     ProfitDB.trainer = ProfitDB.trainer or {}
     ProfitDB.merchant = ProfitDB.merchant or {}
+    ProfitDB.disenchant = ProfitDB.disenchant or {}
+  elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+    if arg1 == "player" and arg3 == DISENCHANT then
+      local clicked = clickedItem and GetTime() - clickedItem.time < 10 and clickedItem.itemID
+      pendingDisenchant, clickedItem = { itemID = clicked, time = GetTime() }, nil
+    end
+  elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
+    OnLoot()
   elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
     ScanTrainer()
   else

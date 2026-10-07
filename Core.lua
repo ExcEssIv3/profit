@@ -10,9 +10,51 @@ local addonName, ns = ...
 --   x {issue, ...} data problems; such recipes are likely not obtainable
 -- Data/Items.lua, keyed by item ID: n name, q quality, b vendor buy price, v vendor sell price (copper),
 --   vs sold by vendors in unlimited supply, vl sold by vendors in limited supply
+-- Data/Disenchant.lua, keyed by disenchant bracket: c item class, q quality, lo..hi item level,
+--   s Enchanting skill needed (nil if unknown),
+--   r {itemID, chance %, min, max, ...} results (from tools/disenchant.py), i {itemID, ...} items in
+--   the client data that disenchant this way; ns.NoDisenchant {itemID, ...} gear that can't be
 -- ProfitDB (see Record.lua) adds trainer skills and merchant items seen since the data was built.
 
 local AH_CUT = 0.05 -- faction auction house; neutral auction houses aren't supported
+
+local DisenchantBracket = {} -- itemID -> bracket, or false if it can't be disenchanted
+for bracket, de in pairs(ns.Disenchant) do
+  for _, itemID in ipairs(de.i) do DisenchantBracket[itemID] = bracket end
+end
+for _, itemID in ipairs(ns.NoDisenchant) do DisenchantBracket[itemID] = false end
+
+local GetItemInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
+local GetItemInfoInstant = C_Item and C_Item.GetItemInfoInstant or GetItemInfoInstant
+local ITEM_CLASS_WEAPON, ITEM_CLASS_ARMOR = 2, 4
+-- The client data lacks many items (the server sends them), so match those by what the game
+-- reports about them, and remember the answer. nil until the item is cached; the second value is
+-- true in that case.
+local function FindBracket(itemID)
+  local known = DisenchantBracket[itemID]
+  if known ~= nil then return known or nil end
+  -- Only gear disenchants. The item class is in the client, so this needs no server request.
+  local okInstant, _, _, _, _, _, instantClass = pcall(GetItemInfoInstant, itemID)
+  if okInstant and instantClass and instantClass ~= ITEM_CLASS_WEAPON and instantClass ~= ITEM_CLASS_ARMOR then
+    DisenchantBracket[itemID] = false
+    return nil
+  end
+  local ok, _, _, quality, level, _, _, _, _, _, _, _, class = pcall(GetItemInfo, itemID)
+  if not (ok and quality and level and class) then return nil, true end
+  DisenchantBracket[itemID] = false
+  for bracket, de in pairs(ns.Disenchant) do
+    if de.c == class and de.q == quality and level >= de.lo and level <= de.hi then
+      DisenchantBracket[itemID] = bracket
+      return bracket
+    end
+  end
+end
+
+-- Enchanting skill needed to disenchant the item, or nil if unknown or not disenchantable.
+function ns.DisenchantSkill(itemID)
+  local bracket = FindBracket(itemID)
+  return bracket and ns.Disenchant[bracket].s
+end
 
 ns.ProfessionNames = {}
 for _, recipe in pairs(ns.Recipes) do ns.ProfessionNames[recipe.p] = true end
@@ -100,6 +142,27 @@ function ns.FormatMoney(copper)
 end
 local FormatMoney = ns.FormatMoney
 
+-- Expected auction value (after the cut) of disenchanting one item. Returns value or nil if any
+-- result has no price, the results as { itemID, chance, min, max, price }, and the unpriced item IDs.
+-- Returns nil if the item can't be disenchanted.
+function ns.DisenchantValue(itemID)
+  local bracket = FindBracket(itemID)
+  if not bracket then return nil end
+  local results = ns.Disenchant[bracket].r
+  local value, outcomes, missing = 0, {}, {}
+  for i = 1, #results, 4 do
+    local matID, chance, low, high = results[i], results[i + 1], results[i + 2], results[i + 3]
+    local price = AuctionPrice(matID)
+    table.insert(outcomes, { itemID = matID, chance = chance, min = low, max = high, price = price })
+    if price then
+      value = value + chance / 100 * (low + high) / 2 * price * (1 - AH_CUT)
+    else
+      table.insert(missing, matID)
+    end
+  end
+  return #missing == 0 and value or nil, outcomes, missing
+end
+
 -- Price out one recipe. Any field that depends on a missing price is nil, and the
 -- item IDs without prices are listed in `missing`.
 function ns.Evaluate(spellID)
@@ -135,6 +198,13 @@ function ns.Evaluate(spellID)
     end
     if result.revenue and result.cost then
       result.profit = result.revenue - result.cost
+    end
+    -- Crafting to disenchant: each made item is disenchanted separately.
+    local deValue, outcomes = ns.DisenchantValue(itemID)
+    result.disenchant = outcomes
+    if deValue then
+      result.deValue = deValue * count
+      if result.cost then result.deProfit = result.deValue - result.cost end
     end
   end
   return result
@@ -210,10 +280,91 @@ function ns.Rank(filter, profession, search)
     if include then
       local e = ns.Evaluate(spellID)
       e.known, e.canLearn, e.color = ns.IsKnown(spellID), ns.CanLearn(spellID), ns.Color(spellID)
+      e.key, e.name = spellID, recipe.n
       table.insert(rows, e)
     end
   end
   return rows
+end
+
+-- Item IDs Auctionator has prices for. Reads its price database, which isn't part of its API,
+-- so fall back to every item in our data if that changes. Second value: true if from Auctionator.
+local function PricedItemIDs()
+  local ok, db = pcall(function() return Auctionator.Database.db end)
+  if ok and type(db) == "table" then
+    local ids = {}
+    for key in pairs(db) do
+      local id = type(key) == "string" and tonumber(key:match("^(%d+)$"))
+      if id then table.insert(ids, id) end
+    end
+    return ids, true
+  end
+  local ids = {}
+  for _, de in pairs(ns.Disenchant) do
+    for _, itemID in ipairs(de.i) do table.insert(ids, itemID) end
+  end
+  return ids, false
+end
+
+-- Items not loaded yet are requested once; GET_ITEM_INFO_RECEIVED refreshes the window.
+local requested = {}
+local function RequestItem(itemID)
+  if requested[itemID] or not (C_Item and C_Item.RequestLoadItemDataByID) then return end
+  requested[itemID] = true
+  pcall(C_Item.RequestLoadItemDataByID, itemID)
+end
+
+function ns.ItemDisplayName(itemID)
+  local ok, name = pcall(GetItemInfo, itemID)
+  return ok and name or ns.ItemName(itemID)
+end
+
+-- Gear on the auction house worth more disenchanted than it costs, for an enchanter. Each row:
+-- { key, itemID, name, cost (auction price), deValue, profit, skill }. Leaves out items needing
+-- more Enchanting skill than the character has; their count is the second value.
+function ns.DisenchantDeals(search)
+  search = search and search ~= "" and search:lower() or nil
+  local enchanting = ns.SkillLevel("Enchanting") or 0
+  local rows, tooHigh = {}, 0
+  for _, itemID in ipairs((PricedItemIDs())) do
+    local bracket, loading = FindBracket(itemID)
+    if loading then RequestItem(itemID) end
+    local price = bracket and AuctionPrice(itemID)
+    local deValue = price and ns.DisenchantValue(itemID)
+    if deValue and deValue > price then
+      local skill = ns.Disenchant[bracket].s
+      local name = ns.ItemDisplayName(itemID)
+      if skill and skill > enchanting then
+        tooHigh = tooHigh + 1
+      elseif not search or name:lower():find(search, 1, true) then
+        table.insert(rows, { key = "item:" .. itemID, itemID = itemID, name = name, cost = price, deValue = deValue,
+          profit = deValue - price, skill = skill })
+      end
+    end
+  end
+  return rows, tooHigh
+end
+
+-- Breakdown of buying one item to disenchant, as display lines.
+function ns.DisenchantLines(itemID)
+  local lines = {}
+  local function add(fmt, ...) table.insert(lines, string.format(fmt, ...)) end
+  local price, skill = AuctionPrice(itemID), ns.DisenchantSkill(itemID)
+  local value, outcomes = ns.DisenchantValue(itemID)
+  add("|cffffd100%s|r", ns.ItemDisplayName(itemID))
+  add("Enchanting skill to disenchant: %s", skill or "unknown")
+  add("Auction price: %s", FormatMoney(price))
+  add(" ")
+  add("Disenchants into:")
+  for _, o in ipairs(outcomes or {}) do
+    add("  %s%% %sx %s: %s each", o.chance, o.min == o.max and o.min or (o.min .. "-" .. o.max),
+      ItemName(o.itemID), FormatMoney(o.price))
+  end
+  add("Disenchant value (after cut): %s", FormatMoney(value))
+  add("Profit: %s", FormatMoney(value and price and value - price))
+  add(" ")
+  add("Click the item with the auction house open to search for it.")
+  return lines
 end
 
 -- Sort helper: rows missing the sort value go last.
@@ -221,10 +372,10 @@ function ns.SortRows(rows, key, ascending)
   table.sort(rows, function(a, b)
     local x, y = a[key], b[key]
     if x == nil or y == nil then
-      if x == y then return a.recipe.n < b.recipe.n end
+      if x == y then return a.name < b.name end
       return y == nil
     end
-    if x == y then return a.recipe.n < b.recipe.n end
+    if x == y then return a.name < b.name end
     if ascending then return x < y end
     return x > y
   end)
@@ -274,6 +425,17 @@ function ns.BreakdownLines(spellID)
     add("Sells for (after %d%% cut): %s", AH_CUT * 100, FormatMoney(e.revenue))
     add("Vendor value: %s%s", FormatMoney(e.vendorValue), e.belowVendor and "  |cffff4040(vendor it instead)|r" or "")
     add("Profit: %s", FormatMoney(e.profit))
+    if e.disenchant then
+      add(" ")
+      add("Disenchants into%s:", r.m[2] > 1 and string.format(" (each of %d)", r.m[2]) or "")
+      for _, o in ipairs(e.disenchant) do
+        add("  %s%% %s%s: %s each", o.chance, o.min == o.max and o.min or (o.min .. "-" .. o.max),
+          "x " .. ItemName(o.itemID), FormatMoney(o.price))
+      end
+      add("Disenchant value (after cut): %s", FormatMoney(e.deValue))
+      add("Disenchant profit: %s%s", FormatMoney(e.deProfit),
+        e.deProfit and e.profit and e.deProfit > e.profit and "  |cff40c040(better than selling)|r" or "")
+    end
   else
     add("Makes no item (e.g. an enchant); not priced.")
   end
@@ -342,6 +504,23 @@ local API_FEATURES = {
     optional = true },
   { "Merchant recording", { "C_MerchantFrame", "C_MerchantFrame.GetItemInfo", "GetMerchantNumItems", "GetMerchantItemID" },
     { "Classic merchant", "GetMerchantItemInfo", "GetMerchantNumItems", "GetMerchantItemID" } },
+  { "Disenchant (items not in data)", { "C_Item", "C_Item.GetItemInfo" }, { "GetItemInfo", "GetItemInfo" } },
+  { "Disenchant recording", { "loot source", "GetLootSourceInfo", "C_Item.GetItemIDByGUID", "GetNumLootItems",
+    "GetLootSlotLink", "GetLootSlotInfo" },
+    { "bag click", "C_Container.UseContainerItem", "C_Container.GetContainerItemID", "SpellIsTargeting",
+      "GetNumLootItems", "GetLootSlotLink", "GetLootSlotInfo" },
+    { "bag click (old API)", "UseContainerItem", "GetContainerItemID", "SpellIsTargeting", "GetNumLootItems",
+      "GetLootSlotLink", "GetLootSlotInfo" } },
+  { "Disenchant deals (item list)", { "Auctionator price database", "Auctionator.Database.db" },
+    { "Profit's item data", "Auctionator.API.v1.GetAuctionPriceByItemID" } },
+  { "Disenchant deals (load items)", { "C_Item", "C_Item.RequestLoadItemDataByID" }, optional = true },
+  { "Disenchant (skip non-gear)", { "C_Item", "C_Item.GetItemInfoInstant" }, { "GetItemInfoInstant", "GetItemInfoInstant" },
+    optional = true },
+  { "Disenchant deals (AH search)", { "Auctionator", "Auctionator.API.v1.MultiSearchExact" }, optional = true },
+  { "Item tooltip", { "tooltip data", "TooltipDataProcessor.AddTooltipPostCall", "Enum.TooltipDataType" },
+    { "OnTooltipSetItem", "GameTooltip.HookScript", "GameTooltip.GetItem" } },
+  { "Addon version", { "C_AddOns", "C_AddOns.GetAddOnMetadata" }, { "GetAddOnMetadata", "GetAddOnMetadata" },
+    optional = true },
   { "Dropdowns", { "menu system", "MenuUtil", "DropdownButtonMixin" },
     { "UIDropDownMenu", "UIDropDownMenu_Initialize", "UIDropDownMenu_SetText" } },
 }
@@ -355,10 +534,17 @@ local function Exists(path)
   return value ~= nil
 end
 
-local function PrintDebug()
+-- Plain text (no color codes) so it pastes cleanly into a bug report.
+local function DebugText()
+  local lines = {}
+  local function add(fmt, ...) table.insert(lines, string.format(fmt, ...)) end
   local version, build, _, interface = GetBuildInfo()
-  print(string.format("|cffffd100Profit debug|r: client %s.%s, interface %s, data build %s",
-    version, build, tostring(interface), ns.DataBuild or "?"))
+  local metadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+  local addonVersion = metadata and metadata(addonName, "Version")
+  -- The packager fills in the version from the release tag; a copy from git still has the placeholder.
+  if addonVersion and addonVersion:find("^@") then addonVersion = "dev" end
+  add("Profit %s: client %s.%s, interface %s, data build %s", addonVersion or "?", version, build,
+    tostring(interface), ns.DataBuild or "?")
   for _, feature in ipairs(API_FEATURES) do
     local using, missing = nil, {}
     for a = 2, #feature do
@@ -371,22 +557,24 @@ local function PrintDebug()
       table.insert(missing, alternative[1] .. " (no " .. table.concat(absent, ", ") .. ")")
     end
     if using then
-      print(string.format("  %s: |cff40c040%s|r", feature[1], using))
+      add("  %s: %s", feature[1], using)
     else
-      print(string.format("  %s: %s%s|r", feature[1], feature.optional and "|cff808080not available, " or
-        "|cffff4040MISSING, ", table.concat(missing, "; ")))
+      add("  %s: %s%s", feature[1], feature.optional and "not available, " or "MISSING, ", table.concat(missing, "; "))
     end
   end
   local professions, known = {}, 0
   for name, skill in pairs(ProfitCharDB.skills) do table.insert(professions, name .. " " .. skill) end
   for _, recipes in pairs(ProfitCharDB.known) do for _ in pairs(recipes) do known = known + 1 end end
-  local trainer, merchant = 0, 0
+  local trainer, merchant, disenchants = 0, 0, 0
   for _ in pairs(ProfitDB.trainer) do trainer = trainer + 1 end
   for _ in pairs(ProfitDB.merchant) do merchant = merchant + 1 end
+  for _, d in pairs(ProfitDB.disenchant) do disenchants = disenchants + d.n end
   table.sort(professions)
-  print(string.format("  Character: %s; %d known recipes", #professions > 0 and table.concat(professions, ", ")
-    or "no professions detected", known))
-  print(string.format("  Recorded: %d trainer recipes, %d merchant items", trainer, merchant))
+  add("  Character: %s; %d known recipes", #professions > 0 and table.concat(professions, ", ")
+    or "no professions detected", known)
+  add("  Recorded: %d trainer recipes, %d merchant items, %d disenchant%s", trainer, merchant, disenchants,
+    disenchants == 1 and "" or "s")
+  return table.concat(lines, "\n")
 end
 
 SLASH_PROFIT1 = "/profit"
@@ -401,7 +589,9 @@ SlashCmdList.PROFIT = function(msg)
     print("/prof top [count] [profession] - most profitable known or learnable crafts")
     print("/prof export - copy your trainer and merchant recordings to share")
     print("/prof minimap - show or hide the minimap button")
+    print("/prof tooltip - show or hide disenchant values in item tooltips")
     print("/prof debug - which game APIs Profit uses on this client")
+    print("/prof testdisenchant - show the \"didn't expect\" popup after your next disenchant")
     print("/prof changelog - what's new in each update")
     print("/prof <recipe name> - cost and profit breakdown for one recipe")
   elseif cmd == "top" then
@@ -413,10 +603,19 @@ SlashCmdList.PROFIT = function(msg)
     if ns.ShowExport then ns.ShowExport() end
   elseif cmd == "changelog" then
     if ns.ShowChangelog then ns.ShowChangelog() end
+  elseif cmd == "testdisenchant" then
+    if ns.TestNextDisenchant then ns.TestNextDisenchant() end
   elseif cmd == "debug" then
-    PrintDebug()
+    if ns.ShowText then
+      ns.ShowText("Profit: debug info", "Press Ctrl+C (Cmd+C on Mac) to copy, then paste it into your bug report " ..
+        "at github.com/ExcEssIv3/profit/issues.", DebugText())
+    else
+      print(DebugText())
+    end
   elseif cmd == "minimap" then
     if ns.ToggleMinimapButton then ns.ToggleMinimapButton() end
+  elseif cmd == "tooltip" then
+    if ns.ToggleTooltip then ns.ToggleTooltip() end
   else
     local spellID = FindRecipe(msg)
     if not spellID then print("No recipe matching \"" .. msg .. "\"") return end
@@ -431,7 +630,12 @@ function ns.Refresh() end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
-frame:SetScript("OnEvent", function()
+frame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+frame:SetScript("OnEvent", function(_, event, itemID)
+  if event == "GET_ITEM_INFO_RECEIVED" then
+    if requested[itemID] then ns.Refresh() end
+    return
+  end
   if Auctionator.API.v1.RegisterForDBUpdate then
     Auctionator.API.v1.RegisterForDBUpdate(addonName, function() ns.Refresh() end)
   end
