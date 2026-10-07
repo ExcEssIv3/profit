@@ -19,6 +19,8 @@ the data pipeline and the recording workflow.
 - `Changelog.lua`: release notes (`ns.Changelog`) and the "what's new" popup shown once after
   an update. Add an entry at the top for every release, written for players.
 - `Minimap.lua`: minimap button.
+- `CURSEFORGE.md`: the CurseForge project description, pasted into CurseForge by hand (not packaged).
+  Update it when adding player-facing features.
 - `Tooltip.lua`: disenchant value in item tooltips (`/prof tooltip` toggles it).
 - `tools/`: Python scripts that build the data from wago.tools DB2 CSVs and merge recordings
   into `export/recorded.json`. `tools/disenchant.py` holds the disenchant results by hand

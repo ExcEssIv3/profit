@@ -10,3 +10,4 @@ ignore:
   - export
   - README.md
   - CLAUDE.md
+  - CURSEFORGE.md
