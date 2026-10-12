@@ -5,6 +5,15 @@ local addonName, ns = ...
 -- skips the popup and just records it.
 
 ns.Changelog = {
+  { "0.3.1", {
+    "Vendor flips: a new \"Sell\" choice next to the profession filter. \"Sell: Vendor\" ranks crafts by " ..
+      "what a vendor pays for them instead of the auction house, and \"Sell: Highest\" uses whichever pays " ..
+      "more, marking prices from a vendor with \"(vendor)\".",
+    "Materials you can make yourself are priced at their crafting cost when that's cheaper than buying " ..
+      "them, e.g. Bolts of Woolen Cloth from Wool Cloth. Recipe details show what they're crafted from.",
+    "Favorites: point at a recipe and click the star on its left (or right-click the recipe), then pick " ..
+      "\"Favorites\" in the filter to see just those. Favorites are saved per character.",
+  } },
   { "0.3.0", {
     "Disenchanting! Item tooltips show the estimated disenchant value of weapons and armor, based on " ..
       "Auctionator prices for the materials. Hold Shift to see each material with its chance and price. " ..

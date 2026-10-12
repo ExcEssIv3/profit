@@ -160,6 +160,16 @@ function ns.IsKnown(spellID)
   return nil
 end
 
+-- Favorite recipes, per character: ProfitCharDB.favorites[spellID] = true.
+function ns.IsFavorite(spellID)
+  return ProfitCharDB and ProfitCharDB.favorites and ProfitCharDB.favorites[spellID] or false
+end
+
+function ns.ToggleFavorite(spellID)
+  ProfitCharDB.favorites[spellID] = not ns.IsFavorite(spellID) or nil
+  ns.Refresh()
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
@@ -173,6 +183,7 @@ frame:SetScript("OnEvent", function(_, event, arg1)
     ProfitCharDB = ProfitCharDB or {}
     ProfitCharDB.known = ProfitCharDB.known or {}
     ProfitCharDB.skills = ProfitCharDB.skills or {}
+    ProfitCharDB.favorites = ProfitCharDB.favorites or {}
   elseif event == "PLAYER_LOGIN" or event == "SKILL_LINES_CHANGED" then
     ScanSkills()
   elseif event == "CRAFT_SHOW" or event == "CRAFT_UPDATE" then

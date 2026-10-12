@@ -11,23 +11,30 @@ local ROWS, ROW_HEIGHT = 18, 18
 -- "disenchant" lists auction house gear to buy and disenchant instead of recipes; only offered
 -- to enchanters.
 local FILTERS = {
-  { "known", "Known only" }, { "trainable", "Known + trainable" }, { "mine", "Known + learnable" },
-  { "all", "All recipes" }, { "disenchant", "Disenchant from AH" },
+  { "favorites", "Favorites" }, { "known", "Known only" }, { "trainable", "Known + trainable" },
+  { "mine", "Known + learnable" }, { "all", "All recipes" }, { "disenchant", "Disenchant from AH" },
 }
+local DEFAULT_FILTER = 2 -- Known only
+-- Where crafted items are sold, for revenue and profit (see ns.Evaluate).
+local SELL_TO = { { "auction", "Sell: AH" }, { "vendor", "Sell: Vendor" }, { "highest", "Sell: Highest" } }
+local RevenueText -- defined below; needs state
 -- key, title, width, justify, title in "Disenchant from AH" ("" hides the column). fit: shrink to
--- the widest value in the list (width is the most it takes), and give the rest to the "name" column.
+-- the widest value in the list (width is the most it takes), and give the rest to the "name" column;
+-- text(e) is the cell's text when it isn't the colored money value.
 local COLUMNS = {
+  { "favorite", "", 20, "CENTER", "" }, -- the favorite star (row.star), not text
   { "profit", "Profit", 100, "RIGHT", "Profit", fit = true },
-  { "name", "Recipe", 180, "LEFT", "Item" },
+  { "name", "Recipe", 160, "LEFT", "Item" },
   { "yellow", "Skill", 110, "LEFT", "Skill" },
   { "cost", "Cost", 90, "RIGHT", "Buy for" },
-  { "revenue", "Sells for", 90, "RIGHT", "Disenchant" },
+  { "revenue", "Sells for", 130, "RIGHT", "Disenchant", fit = true, text = function(e) return RevenueText(e) end },
   { "deProfit", "Disenchant", 90, "RIGHT", "" }, -- profit if disenchanted instead of sold
 }
 local LIST_WIDTH = 0
 for _, c in ipairs(COLUMNS) do LIST_WIDTH = LIST_WIDTH + c[3] end
 
-local state = { filter = 1, profession = nil, search = "", sortKey = "profit", ascending = false, offset = 0 }
+local state = { filter = DEFAULT_FILTER, profession = nil, sellTo = "auction", search = "", sortKey = "profit", ascending = false,
+  offset = 0 }
 local rows, window, Update = {}
 
 local function Money(copper, colorSign)
@@ -35,6 +42,15 @@ local function Money(copper, colorSign)
   local text = ns.FormatMoney(copper)
   if colorSign then return (copper < 0 and "|cffff4040" or "|cff40c040") .. text .. "|r" end
   return text
+end
+
+-- "Sells for": "v" marks an auction price below vendor value; with Sell: Highest, "(vendor)" marks
+-- rows where the vendor pays more.
+function RevenueText(e)
+  if state.sellTo == "highest" and e.soldTo == "vendor" then
+    return Money(e.revenue) .. " |cffa0a0a0(vendor)|r"
+  end
+  return Money(e.revenue) .. (state.sellTo == "auction" and e.belowVendor and " |cffff4040v|r" or "")
 end
 
 -- Profession dropdown choices: the character's own professions, or every profession for
@@ -51,6 +67,10 @@ local function ProfessionChoices()
   if next(ns.MainProfessions()) then table.insert(choices, { "main", "Main professions" }) end
   for _, name in ipairs(list) do table.insert(choices, { name, name }) end
   return choices
+end
+
+local function SellLabel()
+  for _, c in ipairs(SELL_TO) do if c[1] == state.sellTo then return c[2] end end
 end
 
 local function ProfessionLabel()
@@ -81,13 +101,22 @@ local function DisenchantMode() return FILTERS[state.filter][1] == "disenchant" 
 local function ShowDetail(key)
   state.selected = key
   local itemID = type(key) == "string" and tonumber(key:match("^item:(%d+)"))
-  local lines = itemID and ns.DisenchantLines(itemID) or key and ns.BreakdownLines(key)
+  window.favorite:SetShown(key ~= nil and not itemID)
+  if key and not itemID then
+    window.favorite:SetText(ns.IsFavorite(key) and "Unfavorite" or "Favorite")
+  end
+  local lines = itemID and ns.DisenchantLines(itemID) or key and ns.BreakdownLines(key, state.sellTo)
   window.detail:SetText(lines and table.concat(lines, "\n") or DisenchantMode() and
     "Gear on the auction house worth more disenchanted than its price, from your last Auctionator " ..
     "scan. Select an item for what it disenchants into; with the auction house open, clicking it " ..
     "also searches for it." or
     "Select a recipe to see its materials, where to learn it, and its profit. " ..
-    "Clicking a recipe you know also opens it in your profession window.")
+    "Clicking a recipe you know also opens it in your profession window. Click the star to the " ..
+    "left of a recipe to add it to your favorites.")
+  window.detailChild:SetHeight(math.max(1, window.detail:GetStringHeight()))
+  -- A new selection starts at the top; redraws of the same one keep the scroll position.
+  if key ~= window.detailKey then window.detailScroll:SetVerticalScroll(0) end
+  window.detailKey = key
 end
 
 -- Column widths for this list: fitted columns as wide as their widest text, "name" takes the rest.
@@ -100,7 +129,7 @@ local function ColumnWidths(list)
       measure:SetText(col[2])
       local widest = measure:GetStringWidth()
       for _, e in ipairs(list) do
-        measure:SetText(Money(e[col[1]], true))
+        measure:SetText(col.text and col.text(e) or Money(e[col[1]], true))
         widest = math.max(widest, measure:GetStringWidth())
       end
       widths[col[1]] = math.min(col[3], math.ceil(widest) + 12)
@@ -125,7 +154,17 @@ local function Layout(widths)
   end
 end
 
+-- The favorite star: always shown on favorites, and faintly on the recipe under the mouse.
+local function UpdateStar(row)
+  local e = row.e
+  local recipe = e and not e.itemID
+  local favorite = recipe and ns.IsFavorite(e.spellID)
+  row.star:SetShown(recipe and (favorite or row:IsMouseOver()) or false)
+  row.star:SetAlpha(favorite and 1 or 0.4)
+end
+
 local function SetRow(row, e)
+  UpdateStar(row)
   if DisenchantMode() then
     row.cells.name:SetText(e.name)
     row.cells.yellow:SetText(e.skill or "?")
@@ -137,7 +176,7 @@ local function SetRow(row, e)
     row.cells.name:SetText(code and ("|c" .. code .. e.name .. "|r") or e.name)
     row.cells.yellow:SetText(SkillText(e))
     row.cells.cost:SetText(Money(e.cost))
-    row.cells.revenue:SetText(Money(e.revenue) .. (e.belowVendor and " |cffff4040v|r" or ""))
+    row.cells.revenue:SetText(RevenueText(e))
     row.cells.deProfit:SetText(Money(e.deProfit, true))
   end
   row.cells.profit:SetText(Money(e.profit, true))
@@ -150,6 +189,8 @@ function Update()
   window.professionDropdown:Refresh(ProfessionLabel())
   local deMode = DisenchantMode()
   window.professionDropdown:SetShown(not deMode)
+  window.sellDropdown:Refresh(SellLabel())
+  window.sellDropdown:SetShown(not deMode)
   for _, header in ipairs(window.headers) do header:SetText(deMode and header.col[5] or header.col[2]) end
 
   local list, tooHigh
@@ -159,7 +200,7 @@ function Update()
   else
     local profession = state.profession or nil
     if profession == "main" then profession = ns.MainProfessions() end
-    list = ns.Rank(filter[1], profession, state.search)
+    list = ns.Rank(filter[1], profession, state.search, state.sellTo)
     for _, e in ipairs(list) do e.yellow = e.recipe.y end
   end
   ns.SortRows(list, state.sortKey, state.ascending)
@@ -192,11 +233,14 @@ function Update()
     window.status:SetText(string.format("%d items worth more disenchanted than their auction price%s. " ..
       "Prices from your last Auctionator scan.", #list,
       tooHigh > 0 and string.format(" (%d more need more Enchanting skill)", tooHigh) or ""))
+  elseif #list == 0 and filter[1] == "favorites" then
+    window.status:SetText("No favorites yet: point at a recipe and click the star on its left.")
   elseif #list == 0 and filter[1] ~= "all" and not hasSkills then
     window.status:SetText("No professions detected yet: open one of your profession windows, or switch to All recipes.")
   else
-    window.status:SetText(string.format("%d recipes, %d fully priced. Colors show your skill-up chance; " ..
-      "\"v\" = sells for less than vendor value. Data build %s.", #list, priced, ns.DataBuild or "?"))
+    window.status:SetText(string.format("%d recipes, %d fully priced. Colors show your skill-up chance%s. " ..
+      "Data build %s.", #list, priced, state.sellTo == "auction" and "; \"v\" = sells for less than vendor value"
+      or "", ns.DataBuild or "?"))
   end
   if state.selected then ShowDetail(state.selected) end
 end
@@ -278,9 +322,16 @@ local function CreateWindow()
     end)
   f.professionDropdown:SetPoint("LEFT", f.filterDropdown, "RIGHT", 6 - 2 * f.filterDropdown.inset, 0)
 
+  f.sellDropdown = CreateDropdown(f, "ProfitSellDropdown", 120, function() return SELL_TO end,
+    function() return state.sellTo end, function(value)
+      state.sellTo = value
+      Update()
+    end)
+  f.sellDropdown:SetPoint("LEFT", f.professionDropdown, "RIGHT", 6 - 2 * f.professionDropdown.inset, 0)
+
   local search = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
   search:SetSize(160, 20)
-  search:SetPoint("LEFT", f.professionDropdown, "RIGHT", 14 - f.professionDropdown.inset, 0)
+  search:SetPoint("LEFT", f.sellDropdown, "RIGHT", 14 - f.sellDropdown.inset, 0)
   search:SetAutoFocus(false)
   search:SetScript("OnTextChanged", function(self)
     state.search, state.offset = self:GetText(), 0
@@ -300,6 +351,8 @@ local function CreateWindow()
     header.col = col
     header:SetSize(col[3], 18)
     header:SetPoint("TOPLEFT", x, -60)
+    -- Its own font string: SetText("") on a button doesn't create one (the star column's title).
+    header:SetFontString(header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"))
     header:SetNormalFontObject("GameFontNormalSmall")
     header:SetHighlightFontObject("GameFontHighlightSmall")
     header:SetText(col[2])
@@ -307,7 +360,7 @@ local function CreateWindow()
     header:GetFontString():SetAllPoints()
     table.insert(f.headers, header)
     header:SetScript("OnClick", function()
-      if header:GetText() == "" then return end
+      if (header:GetText() or "") == "" then return end
       if state.sortKey == col[1] then
         state.ascending = not state.ascending
       else
@@ -335,10 +388,48 @@ local function CreateWindow()
       row.cells[col[1]] = cell
       cx = cx + col[3]
     end
+    -- Click the star to add or remove a favorite.
+    local star = CreateFrame("Button", nil, row)
+    star:SetSize(14, 14)
+    star:SetPoint("CENTER", row.cells.favorite)
+    local icon = star:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
+    star:SetScript("OnClick", function(self)
+      if not row.e then return end
+      ns.ToggleFavorite(row.e.spellID)
+      Update()
+      self:GetScript("OnEnter")(self) -- refresh the tooltip
+    end)
+    -- After a click the row may show another recipe, or none (unfavorited under Favorites).
+    star:SetScript("OnEnter", function(self)
+      UpdateStar(row)
+      if not (self:IsVisible() and row.e and not row.e.itemID) then GameTooltip:Hide() return end
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetText(ns.IsFavorite(row.e.spellID) and "Remove from favorites" or "Add to favorites")
+      GameTooltip:Show()
+    end)
+    star:SetScript("OnLeave", function()
+      GameTooltip:Hide()
+      UpdateStar(row)
+    end)
+    star:Hide()
+    row.star = star
+    row:SetScript("OnEnter", UpdateStar)
+    row:SetScript("OnLeave", UpdateStar)
     -- Click shows the breakdown, and opens the game's profession window at recipes you know, or
     -- searches the auction house (through Auctionator, when it's open) for an item to disenchant.
-    row:SetScript("OnClick", function(self)
+    -- Right-click adds or removes a favorite.
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row:SetScript("OnClick", function(self, button)
       if not self.e then return end
+      if button == "RightButton" then
+        if not self.e.itemID then
+          ns.ToggleFavorite(self.e.spellID)
+          Update()
+        end
+        return
+      end
       ShowDetail(self.e.key)
       Update()
       if self.e.itemID then
@@ -372,14 +463,31 @@ local function CreateWindow()
     scroll:SetValue(math.max(low, math.min(high, state.offset - delta * 3)))
   end)
 
-  -- Detail pane.
-  local detail = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  detail:SetPoint("TOPLEFT", 14 + LIST_WIDTH + 24, -60)
-  detail:SetPoint("BOTTOMRIGHT", -14, 40)
+  -- Detail pane: scrolls when a breakdown is longer than the pane. The scroll bar sits in the
+  -- 22px to the right of the text, and hides when everything fits.
+  local detailScroll = CreateFrame("ScrollFrame", "ProfitDetailScroll", f, "UIPanelScrollFrameTemplate")
+  detailScroll:SetPoint("TOPLEFT", 14 + LIST_WIDTH + 24, -60)
+  detailScroll:SetPoint("BOTTOMRIGHT", -36, 66)
+  detailScroll.scrollBarHideable = true
+  local detailChild = CreateFrame("Frame", nil, detailScroll)
+  detailChild:SetSize(330 - 38 - 36, 1) -- the window's width beyond the list, less the margins
+  detailScroll:SetScrollChild(detailChild)
+  local detail = detailChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  detail:SetPoint("TOPLEFT")
+  detail:SetWidth(detailChild:GetWidth())
   detail:SetJustifyH("LEFT")
   detail:SetJustifyV("TOP")
   detail:SetSpacing(2)
-  f.detail = detail
+  f.detail, f.detailChild, f.detailScroll = detail, detailChild, detailScroll
+
+  local favorite = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+  favorite:SetSize(100, 22)
+  favorite:SetPoint("BOTTOMLEFT", 14 + LIST_WIDTH + 24, 36)
+  favorite:SetScript("OnClick", function()
+    ns.ToggleFavorite(state.selected)
+    Update()
+  end)
+  f.favorite = favorite
 
   f.measure = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") -- for ColumnWidths
   f.measure:SetAlpha(0) -- invisible but laid out, so its width can be measured

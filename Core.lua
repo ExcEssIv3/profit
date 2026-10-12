@@ -87,12 +87,52 @@ end
 
 -- Vendor materials cost their list price everywhere (reputation discounts aside); everything
 -- else is priced from the auction house. Returns price, "vendor" | "auction".
-local function ReagentPrice(itemID)
+local function BuyPrice(itemID)
   if ns.VendorSupply(itemID) == "unlimited" then
     local item, seen = ns.Items[itemID], Recorded("merchant", itemID)
     return (item and item.b > 0 and item.b) or (seen and seen.price), "vendor"
   end
   return AuctionPrice(itemID), "auction"
+end
+
+-- Item ID -> spell IDs of the recipes that make it.
+local MadeBy = {}
+for spellID, recipe in pairs(ns.Recipes) do
+  if recipe.m and not recipe.x then
+    MadeBy[recipe.m[1]] = MadeBy[recipe.m[1]] or {}
+    table.insert(MadeBy[recipe.m[1]], spellID)
+  end
+end
+
+-- A material costs its buy price, or its crafting cost when the character knows a recipe for it
+-- and that's cheaper (e.g. Bolt of Woolen Cloth from Wool Cloth), down any chain of crafts.
+-- Returns price, "vendor" | "auction" | "crafted", and for "crafted" the recipe's spell ID.
+-- `visiting` holds the items being priced further up, so recipe loops (essence conversions) end.
+local ReagentPrice
+local function CraftCost(spellID, visiting) -- per item made
+  local recipe, cost = ns.Recipes[spellID], 0
+  for i = 1, #recipe.r, 2 do
+    local price = ReagentPrice(recipe.r[i], visiting)
+    if not price then return nil end
+    cost = cost + price * recipe.r[i + 1]
+  end
+  return cost / recipe.m[2]
+end
+function ReagentPrice(itemID, visiting)
+  local price, source = BuyPrice(itemID)
+  local makers, craftedBy = MadeBy[itemID]
+  if makers and not (visiting and visiting[itemID]) then
+    visiting = visiting or {}
+    visiting[itemID] = true
+    for _, spellID in ipairs(makers) do
+      if ns.IsKnown(spellID) then
+        local cost = CraftCost(spellID, visiting)
+        if cost and (not price or cost < price) then price, source, craftedBy = cost, "crafted", spellID end
+      end
+    end
+    visiting[itemID] = nil
+  end
+  return price, source, craftedBy
 end
 
 -- Lowest skill the recipe can be learned at, or nil if no trainer visit has recorded it.
@@ -164,8 +204,10 @@ function ns.DisenchantValue(itemID)
 end
 
 -- Price out one recipe. Any field that depends on a missing price is nil, and the
--- item IDs without prices are listed in `missing`.
-function ns.Evaluate(spellID)
+-- item IDs without prices are listed in `missing`. sellTo: "auction" (default), "vendor", or
+-- "highest" (whichever pays more). revenue and profit are for that choice, soldTo says which it was;
+-- ahRevenue is always the auction house's.
+function ns.Evaluate(spellID, sellTo)
   local recipe = ns.Recipes[spellID]
   if not recipe then return nil end
   local result = { spellID = spellID, recipe = recipe, missing = {}, reagents = {} }
@@ -173,8 +215,9 @@ function ns.Evaluate(spellID)
   local cost = 0
   for i = 1, #recipe.r, 2 do
     local itemID, count = recipe.r[i], recipe.r[i + 1]
-    local price, priceSource = ReagentPrice(itemID)
-    table.insert(result.reagents, { itemID = itemID, count = count, price = price, priceSource = priceSource })
+    local price, priceSource, craftedBy = ReagentPrice(itemID)
+    table.insert(result.reagents,
+      { itemID = itemID, count = count, price = price, priceSource = priceSource, craftedBy = craftedBy })
     if not price then
       table.insert(result.missing, itemID)
     elseif cost then
@@ -188,12 +231,21 @@ function ns.Evaluate(spellID)
     local itemID, count = recipe.m[1], recipe.m[2]
     local price = AuctionPrice(itemID)
     local item = ns.Items[itemID]
-    result.vendorValue = item and item.v * count or nil
+    -- Items with no sell price can't be sold to vendors.
+    result.vendorValue = item and item.v > 0 and item.v * count or nil
     if price then
-      result.revenue = price * count * (1 - AH_CUT)
+      result.ahRevenue = price * count * (1 - AH_CUT)
       -- Selling to a vendor pays more than the auction house would.
-      result.belowVendor = result.vendorValue ~= nil and result.revenue < result.vendorValue
-    else
+      result.belowVendor = result.vendorValue ~= nil and result.ahRevenue < result.vendorValue
+    end
+    local ah, vendor = result.ahRevenue, result.vendorValue
+    if sellTo == "vendor" then
+      result.revenue, result.soldTo = vendor, vendor and "vendor"
+    elseif sellTo == "highest" and vendor and (not ah or vendor > ah) then
+      result.revenue, result.soldTo = vendor, "vendor"
+    elseif ah then
+      result.revenue, result.soldTo = ah, "auction"
+    elseif sellTo ~= "highest" or not vendor then
       table.insert(result.missing, itemID)
     end
     if result.revenue and result.cost then
@@ -255,11 +307,13 @@ end
 --   "known" known recipes only
 --   "trainable" known recipes plus ones a trainer teaches at the character's skill, including
 --           probable trainer recipes ("trainer_inferred"); leaves out pattern-only recipes
+--   "favorites" this character's favorite recipes
 --   "all"   every recipe
 -- `profession` is one profession's name, a set of names (see ns.MainProfessions), or nil for all.
 -- Recipes that make no item (enchants) or look unobtainable (data issues) are left out.
 -- Grey recipes are kept: they can still be profitable.
-function ns.Rank(filter, profession, search)
+-- `sellTo` is passed to ns.Evaluate.
+function ns.Rank(filter, profession, search, sellTo)
   filter = filter or "mine"
   search = search and search ~= "" and search:lower() or nil
   local rows = {}
@@ -271,6 +325,8 @@ function ns.Rank(filter, profession, search)
       local known = ns.IsKnown(spellID)
       if filter == "known" then
         include = known
+      elseif filter == "favorites" then
+        include = ns.IsFavorite(spellID)
       elseif filter == "trainable" then
         include = known or TrainableNow(spellID)
       else
@@ -278,7 +334,7 @@ function ns.Rank(filter, profession, search)
       end
     end
     if include then
-      local e = ns.Evaluate(spellID)
+      local e = ns.Evaluate(spellID, sellTo)
       e.known, e.canLearn, e.color = ns.IsKnown(spellID), ns.CanLearn(spellID), ns.Color(spellID)
       e.key, e.name = spellID, recipe.n
       table.insert(rows, e)
@@ -381,9 +437,9 @@ function ns.SortRows(rows, key, ascending)
   end)
 end
 
--- Breakdown of one recipe as display lines, shared by chat and the window.
-function ns.BreakdownLines(spellID)
-  local e = ns.Evaluate(spellID)
+-- Breakdown of one recipe as display lines, shared by chat and the window. `sellTo` as in ns.Evaluate.
+function ns.BreakdownLines(spellID, sellTo)
+  local e = ns.Evaluate(spellID, sellTo)
   local r = e.recipe
   local lines = {}
   local function add(fmt, ...) table.insert(lines, string.format(fmt, ...)) end
@@ -416,15 +472,25 @@ function ns.BreakdownLines(spellID)
 
   add(" ")
   for _, reagent in ipairs(e.reagents) do
+    local note = reagent.priceSource == "vendor" and " (vendor)" or ""
+    if reagent.craftedBy then
+      -- What crafting this many takes, e.g. "(crafted from 9x Wool Cloth)".
+      local sub, made = ns.Recipes[reagent.craftedBy], {}
+      for i = 1, #sub.r, 2 do
+        table.insert(made, string.format("%gx %s", sub.r[i + 1] * reagent.count / sub.m[2], ItemName(sub.r[i])))
+      end
+      note = " |cffa0a0a0(crafted from " .. table.concat(made, ", ") .. ")|r"
+    end
     add("%dx %s: %s%s", reagent.count, ItemName(reagent.itemID),
-      reagent.price and FormatMoney(reagent.price * reagent.count) or "no price",
-      reagent.priceSource == "vendor" and " (vendor)" or "")
+      reagent.price and FormatMoney(reagent.price * reagent.count) or "no price", note)
   end
   add("Cost: %s", FormatMoney(e.cost))
   if r.m then
-    add("Sells for (after %d%% cut): %s", AH_CUT * 100, FormatMoney(e.revenue))
-    add("Vendor value: %s%s", FormatMoney(e.vendorValue), e.belowVendor and "  |cffff4040(vendor it instead)|r" or "")
-    add("Profit: %s", FormatMoney(e.profit))
+    add("Sells for (after %d%% cut): %s", AH_CUT * 100, FormatMoney(e.ahRevenue))
+    add("Vendor value: %s%s", e.vendorValue and FormatMoney(e.vendorValue) or "can't be sold to vendors",
+      e.belowVendor and sellTo ~= "vendor" and sellTo ~= "highest" and "  |cffff4040(vendor it instead)|r" or "")
+    add("Profit%s: %s", e.soldTo == "vendor" and " (sold to vendor)" or sellTo and e.soldTo == "auction"
+      and " (sold on auction house)" or "", FormatMoney(e.profit))
     if e.disenchant then
       add(" ")
       add("Disenchants into%s:", r.m[2] > 1 and string.format(" (each of %d)", r.m[2]) or "")

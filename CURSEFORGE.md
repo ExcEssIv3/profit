@@ -2,9 +2,10 @@
 
 Profit shows which of your profession crafts actually make gold. It combines Auctionator's auction house prices with recipe data from WoW Forever to show, for every recipe:
 
-*   **Material cost**, using auction prices, or vendor prices for vendor-bought materials like thread, dye and vials
+*   **Material cost**, using auction prices, vendor prices for vendor-bought materials like thread, dye and vials, or the crafting cost of materials you can make yourself (like bolts of cloth) when that's cheaper
 *   **What it sells for** after the auction house cut, and a warning when a vendor would pay more
 *   **Profit** per craft
+*   **Vendor flips**: rank crafts by what a vendor pays instead of the auction house, or by whichever pays more
 *   **Skill color** at your current level (grey recipes are included, since they can still be profitable)
 *   **Where to learn it** if you don't know it yet: trainer (with the skill needed), pattern or recipe item (with its vendor or auction price), or both
 *   **Disenchant profit**: what you'd make crafting the item to disenchant instead of selling it
@@ -21,7 +22,7 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 2.  Open each of your profession windows once so Profit knows your skill and recipes.
 3.  Type **/prof**, or click the minimap button.
 
-In the window you can filter to recipes you know, recipes you know plus ones a trainer teaches at your skill, recipes you can learn now, or all recipes; pick one profession or your main professions; search; and sort by any column. Click a recipe for its full breakdown. If you know it, the recipe also opens in your profession window.
+In the window you can filter to recipes you know, recipes you know plus ones a trainer teaches at your skill, recipes you can learn now, all recipes, or your favorites; pick one profession or your main professions; choose whether to sell on the auction house, to a vendor, or wherever pays more; search; and sort by any column. Click a recipe for its full breakdown. If you know it, the recipe also opens in your profession window. Click the star to the left of a recipe to add it to your favorites.
 
 ## Commands
 
