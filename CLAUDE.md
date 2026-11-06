@@ -18,7 +18,8 @@ the data pipeline and the recording workflow.
   filter lists items from `ns.DisenchantDeals` instead of recipes) and the copyable text window.
 - `Changelog.lua`: release notes (`ns.Changelog`) and the "what's new" popup shown once after
   an update. Add an entry at the top for every release, written for players.
-- `Minimap.lua`: minimap button.
+- `Minimap.lua`: minimap button, a LibDataBroker launcher shown by LibDBIcon. The libraries live in
+  `Libs/`, which isn't committed: the packager fetches them (`externals` in `.pkgmeta`).
 - `CURSEFORGE.md`: the CurseForge project description, pasted into CurseForge by hand (not packaged).
   Update it when adding player-facing features.
 - `Tooltip.lua`: disenchant value in item tooltips (`/prof tooltip` toggles it).

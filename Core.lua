@@ -587,6 +587,7 @@ local API_FEATURES = {
     { "OnTooltipSetItem", "GameTooltip.HookScript", "GameTooltip.GetItem" } },
   { "Addon version", { "C_AddOns", "C_AddOns.GetAddOnMetadata" }, { "GetAddOnMetadata", "GetAddOnMetadata" },
     optional = true },
+  { "Minimap button", { "LibDBIcon", "LibDBIcon10_Profit" }, optional = true },
   { "Dropdowns", { "menu system", "MenuUtil", "DropdownButtonMixin" },
     { "UIDropDownMenu", "UIDropDownMenu_Initialize", "UIDropDownMenu_SetText" } },
 }

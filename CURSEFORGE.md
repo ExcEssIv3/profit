@@ -41,7 +41,7 @@ Some information isn't in the game files, like the skill needed to learn trainer
 
 ## Notes
 
-*   Built for the WoW Forever beta. Expect rough edges, and please report issues.
+*   Built for WoW Forever. Please report any issues.
 *   English clients only for now.
 *   Faction auction houses only (5% cut).
 *   Disenchant results use the Classic loot tables; WoW Forever may differ, which is why Profit records what your disenchants actually give.

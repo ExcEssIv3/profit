@@ -5,6 +5,13 @@ local addonName, ns = ...
 -- skips the popup and just records it.
 
 ns.Changelog = {
+  { "0.3.2", {
+    "Updated for the live release of WoW Forever (build 70790): recipe skill levels and colors, " ..
+      "tools and items now match the live game.",
+    "The minimap button now uses the standard LibDBIcon library, so minimap button collectors " ..
+      "(and the addon compartment, where there is one) can tidy it away like other addons' buttons. " ..
+      "It keeps its place on the minimap.",
+  } },
   { "0.3.1", {
     "Vendor flips: a new \"Sell\" choice next to the profession filter. \"Sell: Vendor\" ranks crafts by " ..
       "what a vendor pays for them instead of the auction house, and \"Sell: Highest\" uses whichever pays " ..

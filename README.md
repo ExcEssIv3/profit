@@ -3,13 +3,25 @@
 A WoW Forever addon to find the most profitable profession crafts, using Auctionator's
 price data (`Auctionator.API.v1`) for materials and crafted items.
 
-## Install (beta)
+## Install (development)
 
-Requires Auctionator. Link this repo into the beta client's AddOns folder; the link must be
+Requires Auctionator. Link this repo into the client's AddOns folder; the link must be
 named `Profit` to match `Profit.toc`:
 
 ```sh
-ln -s "$PWD" "/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/Profit"
+ln -s "$PWD" "/Applications/World of Warcraft/_forever_/Interface/AddOns/Profit"
+```
+
+The minimap button uses LibDBIcon. Releases bundle it, but `Libs/` isn't committed, so a linked
+copy needs the libraries fetched once (the same ones `.pkgmeta` lists):
+
+```sh
+W=https://repos.wowace.com/wow
+mkdir -p Libs/LibStub Libs/CallbackHandler-1.0 Libs/LibDataBroker-1.1 Libs/LibDBIcon-1.0
+curl -so Libs/LibStub/LibStub.lua $W/libstub/trunk/LibStub.lua
+curl -so Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua $W/callbackhandler/trunk/CallbackHandler-1.0/CallbackHandler-1.0.lua
+curl -so Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua https://raw.githubusercontent.com/tekkub/libdatabroker-1-1/master/LibDataBroker-1.1.lua
+for f in LibDBIcon-1.0.lua lib.xml; do curl -so Libs/LibDBIcon-1.0/$f $W/libdbicon-1-0/trunk/LibDBIcon-1.0/$f; done
 ```
 
 In game, after an Auctionator scan:

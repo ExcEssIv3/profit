@@ -6,7 +6,7 @@ import urllib.request
 from pathlib import Path
 
 WAGO = "https://wago.tools"
-PRODUCT = "wow_classic_beta"  # WoW Forever beta ships under this product
+PRODUCT = "wowf"  # live WoW Forever (the beta was "wow_classic_beta")
 FOREVER_PREFIX = "1.60."
 CACHE_DIR = Path(__file__).parent / ".cache"
 USER_AGENT = "profit-addon-tools/0.1"
