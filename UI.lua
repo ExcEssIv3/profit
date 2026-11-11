@@ -79,7 +79,8 @@ local function ProfessionLabel()
 end
 
 -- Where an unknown recipe is learned: "trainer 40", "pattern 15", "trainer/pattern 15".
-local SOURCE_LABELS = { trainer = "trainer", item = "pattern", trainer_inferred = "trainer?" }
+local SOURCE_LABELS = { trainer = "trainer", item = "pattern", trainer_inferred = "trainer?",
+  drop = "drop", vendor = "vendor", quest = "quest" }
 local function SkillText(e)
   local text
   if e.known then

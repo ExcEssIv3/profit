@@ -2,11 +2,12 @@ local addonName, ns = ...
 
 -- Data/Recipes.lua, keyed by recipe spell ID:
 --   n name, p profession, s {source, ...}: every way to learn it, from "trainer" (including recipes
---     learned automatically, at skill 1) and "item", or on its own "trainer_inferred" (no recipe
---     item, so probably a trainer) or "unknown"
+--     learned automatically, at skill 1; seen in game or listed by Zockify) and "item", or on their own
+--     "drop", "vendor", "quest" (Zockify), "trainer_inferred" (no recipe item, so probably a
+--     trainer) or "unknown"
 --   m {itemID, count} made (nil for enchants), r {itemID, count, itemID, count, ...} reagents
 --   l learn skill, t trainer's learn skill, y yellow, g grey (any may be nil)
---   ri {itemID, learnSkill, ...} recipe items
+--   ri {itemID, learnSkill, ...} recipe items, w {text, ...} where it's learned (Zockify), e.g. "Drop: Scholomance"
 --   x {issue, ...} data problems; such recipes are likely not obtainable
 -- Data/Items.lua, keyed by item ID: n name, q quality, b vendor buy price, v vendor sell price (copper),
 --   vs sold by vendors in unlimited supply, vl sold by vendors in limited supply
@@ -454,7 +455,8 @@ function ns.BreakdownLines(spellID, sellTo)
   if #sources == 0 then add("Known") end
   for _, source in ipairs(sources) do
     if source == "trainer" then
-      add("Trainer: learn at skill %d", TrainerSkill(spellID))
+      local trainer = TrainerSkill(spellID)
+      add(trainer and ("Trainer: learn at skill " .. trainer) or "Trainer: learn level unknown (visit a trainer to record it)")
     elseif source == "trainer_inferred" then
       add("Probably a trainer: learn level unknown (visit a trainer to record it)")
     elseif source == "unknown" then
@@ -468,6 +470,9 @@ function ns.BreakdownLines(spellID, sellTo)
         add("%s: learn at skill %d, %s", ItemName(itemID), r.ri[i + 1], where)
       end
     end
+  end
+  if #sources > 0 and r.w then
+    for _, where in ipairs(r.w) do add("  %s", where) end
   end
 
   add(" ")

@@ -5,7 +5,7 @@ Usage: python tools/import_recorded.py [FILE ...]
 Each FILE is either a SavedVariables Profit.lua (or Professions.lua, from before the addon was
 renamed), or a text file holding strings from `/prof export` (one per line, as players send
 them). "-" reads export strings from stdin.
-With no arguments, reads every account's Profit.lua under the beta client's WTF folder.
+With no arguments, reads every account's Profit.lua under the live client's WTF folder.
 Newer observations replace older ones; changed trainer skill levels are reported. Disenchant
 results are counts, so the larger sample of each item is kept, and results tools/disenchant.py
 doesn't predict are reported. Rerun tools/build_recipes.py afterwards to ship the result.
@@ -20,7 +20,7 @@ from disenchant import TABLE as DISENCHANT_TABLE
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORDED = ROOT / "export" / "recorded.json"
-WTF = Path("/Applications/World of Warcraft/_classic_beta_/WTF/Account")
+WTF = Path("/Applications/World of Warcraft/_forever_/WTF/Account")
 
 TOKEN = re.compile(r"""
     \s+ | --[^\n]* |

@@ -26,6 +26,8 @@ the data pipeline and the recording workflow.
 - `tools/`: Python scripts that build the data from wago.tools DB2 CSVs and merge recordings
   into `export/recorded.json`. `tools/disenchant.py` holds the disenchant results by hand
   (server loot, not in the client).
+  `tools/hotfixes.py` holds server hotfixes the client tables don't have yet.
+  `tools/zockify.py` scrapes Zockify's recipe tables for where recipes are learned.
 
 ## Conventions
 

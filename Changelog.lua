@@ -5,6 +5,15 @@ local addonName, ns = ...
 -- skips the popup and just records it.
 
 ns.Changelog = {
+  { "0.3.3", {
+    "Where to learn recipes: recipe details now say where a recipe or its pattern drops, which vendor " ..
+      "sells it, or which quest gives it, from Zockify's WoW Forever recipe database.",
+    "About 250 recipes Profit could only guess were taught by trainers are now confirmed, most with " ..
+      "the skill needed to learn them, and recipes that come from drops or quests are no longer listed " ..
+      "as trainable.",
+    "Updated for client build 70888 and the November hotfixes: Minor Arcane Elixir and Iron Grenade " ..
+      "sell for less, Coarse Grinding Stone gives skill-ups to 90, and Tanning Rack is learned at 125.",
+  } },
   { "0.3.2", {
     "Updated for the live release of WoW Forever (build 70790): recipe skill levels and colors, " ..
       "tools and items now match the live game.",

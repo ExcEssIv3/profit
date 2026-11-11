@@ -65,6 +65,10 @@ python3 tools/build_recipes.py --build 1.60.1.70124
 
 Tables are cached in `tools/.cache/<build>/`; pass `--refresh` to re-download.
 
+Server hotfixes (Blizzard's hotfix posts) don't reach the tables until a later build, so
+`tools/hotfixes.py` keeps them by hand and the build applies them. The build says when the
+client data has caught up, so the entry can be removed.
+
 Each recipe records what it makes (and how many), its materials, required tools and
 crafting station, its skill-up range, and `sources`: every way to learn it. A recipe can
 have several (e.g. `["trainer", "item"]`: taught by a trainer, or learned from a pattern
@@ -72,10 +76,19 @@ bought at the auction house).
 
 | Source | Meaning |
 |---|---|
-| `trainer` | Seen at a trainer in game (see below), with the skill needed to learn it; also recipes learned automatically with the profession (skill 1) |
+| `trainer` | Seen at a trainer in game (see below) or listed by Zockify, with the skill needed to learn it when known; also recipes learned automatically with the profession (skill 1) |
 | `item` | Taught by a recipe item (listed in `recipe_items`, with the skill needed to learn it) |
+| `drop`, `vendor`, `quest` | From Zockify (below), for recipes with no recipe item in the client data and no trainer |
 | `trainer_inferred` | Only when nothing else applies: no recipe item exists, so probably a trainer; could also be a quest or special source |
 | `unknown` | Only when nothing else applies: the client data looks incomplete (see `issues`); likely not obtainable in Forever |
+
+Where recipes are learned comes from [Zockify](https://www.zockify.com/forever/)'s recipe tables
+(`tools/zockify.py`, cached in `tools/.cache/zockify/`; `--refresh` re-downloads them, `--no-zockify`
+leaves them out). Rows are matched by profession and recipe (or product) name. Each matched recipe
+gets `zockify`: Zockify's source kinds and its `where` lines (drops, vendors, quests), which the
+addon shows in recipe details. Zockify only replaces `trainer_inferred` and `unknown` sources, and
+patterns it says a vendor sells for gold are marked as limited vendor stock. In-game recordings
+still take priority.
 
 The client data does not include trainer skill requirements, which vendors stock an item,
 or drop sources. Those fields are `null` rather than guessed, until filled in by recordings.

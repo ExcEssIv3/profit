@@ -7,7 +7,7 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 *   **Profit** per craft
 *   **Vendor flips**: rank crafts by what a vendor pays instead of the auction house, or by whichever pays more
 *   **Skill color** at your current level (grey recipes are included, since they can still be profitable)
-*   **Where to learn it** if you don't know it yet: trainer (with the skill needed), pattern or recipe item (with its vendor or auction price), or both
+*   **Where to learn it** if you don't know it yet: trainer (with the skill needed), pattern or recipe item (with its vendor or auction price), or both, plus where it drops, which vendor sells it, or which quest gives it
 *   **Disenchant profit**: what you'd make crafting the item to disenchant instead of selling it
 
 ## Disenchanting

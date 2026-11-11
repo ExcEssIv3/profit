@@ -4,16 +4,19 @@ For each profession recipe: what it makes, its materials, required tools and
 crafting station, skill-up range, and where it is learned. Anything the client
 data cannot tell us is left null or marked "unknown" rather than guessed.
 
-Usage: python tools/build_recipes.py [--build 1.60.1.70124] [--refresh]
+Usage: python tools/build_recipes.py [--build 1.60.1.70124] [--refresh] [--no-zockify]
 """
 
 import argparse
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
 import db2
 from disenchant import TABLE as DISENCHANT_TABLE, required_skill
+import hotfixes
+import zockify
 
 PROFESSIONS = {
     "164": "Blacksmithing",
@@ -42,7 +45,7 @@ VENDOR_ITEMS = Path(__file__).resolve().parent / "vendor_items.txt"
 LUA_DIR = ROOT / "Data"
 
 
-def build(build_id, refresh=False):
+def build(build_id, refresh=False, use_zockify=True):
     def t(name):
         return db2.load(name, build_id, refresh)
 
@@ -148,6 +151,8 @@ def build(build_id, refresh=False):
         if out:
             used_items.add(int(out[0]))
 
+    if use_zockify:
+        apply_zockify(recipes, sparse, vendor, zockify.load(refresh))
     recipes.sort(key=lambda x: (x["profession"], x["skill"]["yellow"] or 0, x["name"] or ""))
     # Every item that can be disenchanted, not just recipe items, for the item tooltip.
     # The client's ItemSparse lacks many items (the server sends them); the addon works those
@@ -179,6 +184,7 @@ def build(build_id, refresh=False):
         for i in sorted(used_items)
         if str(i) in sparse
     }
+    apply_hotfixes(recipes, item_table)
     by_bracket = defaultdict(list)
     for i, bracket in item_bracket.items():
         by_bracket[bracket].append(int(i))
@@ -190,6 +196,81 @@ def build(build_id, refresh=False):
                                "results": disenchant[b], "items": sorted(by_bracket[b])}
                            for b in sorted(disenchant, key=int)},
             "no_disenchant": sorted(no_disenchant)}
+
+
+ZOCKIFY_LEARNED = ("drop", "vendor", "quest")
+
+
+def apply_zockify(recipes, sparse, vendor, rows):
+    """Add where each recipe is learned (tools/zockify.py), and fill in guessed sources.
+
+    Recipes seen at a trainer in game, or with a recipe item, keep their sources; Zockify only
+    replaces "trainer_inferred" / "unknown". Recipe items Zockify says a vendor sells for gold
+    are marked as limited vendor stock unless recorded otherwise.
+    """
+    by_name, by_product = defaultdict(list), defaultdict(list)
+    for r in recipes:
+        by_name[(r["profession"], r["name"])].append(r)
+        if r["makes"]:  # Zockify names some rows after the item made, e.g. "Arcanite Bar"
+            by_product[(r["profession"], item_name(sparse, str(r["makes"]["item"])))].append(r)
+    counts = defaultdict(int)
+    for z in rows:
+        key = (z["profession"], z["name"])
+        found = by_name.get(key) or by_product.get(key, [])
+        if len(found) > 1:  # same name twice: tell them apart by skill range, then reagents
+            found = [r for r in found if (r["skill"]["yellow"], r["skill"]["grey"]) == (z["yellow"], z["grey"])] or found
+        if len(found) > 1:
+            found = [r for r in found if sorted(item_name(sparse, str(m["item"])) for m in r["reagents"]) == z["reagents"]]
+        if len(found) != 1:
+            counts["unmatched" if not found else "ambiguous"] += 1
+            continue
+        r = found[0]
+        counts["matched"] += 1
+        r["zockify"] = {"sources": z["sources"], "where": z["where"]}
+        if r["sources"] in (["trainer_inferred"], ["unknown"]):
+            learned = [k for k in ZOCKIFY_LEARNED if k in z["sources"]]
+            if "trainer" in z["sources"] or "with-the-profession" in z["sources"]:
+                r["sources"] = ["trainer"]
+                r["skill"]["trainer"] = 1 if "with-the-profession" in z["sources"] else z["learn"]
+                counts["now trainer"] += 1
+            elif learned:
+                r["sources"] = learned
+                counts["now " + "+".join(learned)] += 1
+            if r["skill"]["learn"] is None:
+                r["skill"]["learn"] = r["skill"]["trainer"] or z["learn"]
+        sold_for_gold = any(w.startswith("Vendor (") and not re.match(r"Vendor \(\d", w) for w in z["where"])
+        if sold_for_gold:
+            for ri in r["recipe_items"]:
+                if item_name(sparse, str(ri["item"])) in z["items"]:
+                    vendor.setdefault(str(ri["item"]), "limited")
+    print("  zockify: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+
+
+def apply_hotfixes(recipes, items):
+    """Apply tools/hotfixes.py; warn about entries the client data already has (or lacks the target of)."""
+    def patch(label, target, fields):
+        if target is None:
+            print(f"  warning: hotfix for {label} matches nothing in this build")
+        elif all(target.get(k) == v for k, v in fields.items()):
+            print(f"  note: client data already has the hotfix for {label}; remove it from hotfixes.py")
+        else:
+            target.update(fields)
+    for item_id, fields in hotfixes.ITEMS.items():
+        patch(f"item {item_id}", items.get(str(item_id)), fields)
+    by_spell = defaultdict(list)
+    for r in recipes:
+        by_spell[r["spell"]].append(r)
+    for spell, fields in hotfixes.RECIPES.items():
+        for r in by_spell.get(spell) or [None]:
+            skill = {k: v for k, v in fields.items() if k != "tools"}
+            current = r and {**r["skill"], "tools": r["tools"]}
+            patch(f"recipe {spell}", current, fields)
+            if r and current != {**r["skill"], "tools": r["tools"]}:
+                r["skill"].update(skill)
+                r["tools"] = current["tools"]
+                if "learn" in skill:
+                    for ri in r["recipe_items"]:
+                        ri["learn_skill"] = skill["learn"]
 
 
 def disenchant_brackets(rows, sparse):
@@ -292,6 +373,8 @@ def write_lua(data):
                 fields.append(f"{key}={val}")
         if r["recipe_items"]:
             fields.append("ri=" + lua_list(v for ri in r["recipe_items"] for v in (ri["item"], ri["learn_skill"])))
+        if r.get("zockify", {}).get("where"):
+            fields.append("w={" + ",".join(lua_str(w) for w in r["zockify"]["where"]) + "}")
         if r["issues"]:
             fields.append("x=" + "{" + ",".join(lua_str(i) for i in r["issues"]) + "}")
         lines.append(f"  [{r['spell']}]={{{','.join(fields)}}},")
@@ -321,11 +404,12 @@ def write_lua(data):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--build", help="client build (default: latest Forever build on wago.tools)")
-    ap.add_argument("--refresh", action="store_true", help="re-download cached tables")
+    ap.add_argument("--refresh", action="store_true", help="re-download cached tables and Zockify pages")
+    ap.add_argument("--no-zockify", action="store_true", help="leave out Zockify's recipe sources")
     args = ap.parse_args()
 
     build_id = args.build or db2.latest_build()
-    data = build(build_id, args.refresh)
+    data = build(build_id, args.refresh, not args.no_zockify)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     write_lua(data)
