@@ -43,6 +43,11 @@ In game, after an Auctionator scan:
   is broken down into its own materials when making that many costs less than buying them, counting
   whole crafts (3 Bronze Bars take 2 smelts, so buying them can be cheaper); vendor materials are
   printed in chat.
+  The same box sets the batch for the **Gold/h** column: the profit of that many crafts divided by
+  the time they take, i.e. the cast times of the recipe and of the materials made along the way,
+  plus 5 s for each recipe used (queued casts follow each other; switching recipe doesn't). Cast
+  times come from the game's spell data. A red "!" means the last scan listed fewer of a material
+  than the batch needs; Auctionator keeps only the lowest price, so the rest may cost more.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
   and for green or better gear what it disenchants into and the disenchant profit

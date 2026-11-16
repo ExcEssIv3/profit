@@ -265,11 +265,13 @@ end
 
 -- Cheapest way to get `count` of an item: buy it, or make it with a known recipe. Unlike
 -- ReagentPrice's per-item price, this counts whole crafts: 3 Bronze Bars take 2 smelts (4 bars),
--- which can cost more than buying 3. Returns { cost, buys = { { itemID, count, vendor }, ... } };
--- cost is nil when a price is missing, and then crafting is only chosen over an unpriced purchase.
+-- which can cost more than buying 3. Returns { cost, buys = { { itemID, count, vendor }, ... },
+-- casts = { [spellID] = crafts } }; cost is nil when a price is missing, and then crafting is only
+-- chosen over an unpriced purchase.
 local function Plan(itemID, count, visiting)
   local price, source = BuyPrice(itemID)
-  local best = { cost = price and price * count, buys = { { itemID = itemID, count = count, vendor = source == "vendor" } } }
+  local best = { cost = price and price * count, casts = {},
+    buys = { { itemID = itemID, count = count, vendor = source == "vendor" } } }
   local makers = MadeBy[itemID]
   if makers and not visiting[itemID] then
     visiting[itemID] = true
@@ -277,12 +279,14 @@ local function Plan(itemID, count, visiting)
       if ns.IsKnown(spellID) then
         local recipe, buys = ns.Recipes[spellID], {}
         local times, cost = math.ceil(count / recipe.m[2]), 0
+        local casts = { [spellID] = times }
         for i = 1, #recipe.r, 2 do
           local sub = Plan(recipe.r[i], recipe.r[i + 1] * times, visiting)
           cost = cost and sub.cost and cost + sub.cost
           for _, b in ipairs(sub.buys) do table.insert(buys, b) end
+          for id, n in pairs(sub.casts) do casts[id] = (casts[id] or 0) + n end
         end
-        if cost and (not best.cost or cost < best.cost) then best = { cost = cost, buys = buys } end
+        if cost and (not best.cost or cost < best.cost) then best = { cost = cost, buys = buys, casts = casts } end
       end
     end
     visiting[itemID] = nil
@@ -290,14 +294,55 @@ local function Plan(itemID, count, visiting)
   return best
 end
 
--- What to buy for `crafts` crafts of a recipe, making materials yourself where that's cheaper for
--- the amount needed (see Plan). Returns lists of { itemID, count } for the auction house and for
--- vendors, in the order they're first needed.
-function ns.Materials(spellID, crafts)
-  local byItem, auction, vendor = {}, {}, {}
-  local recipe = ns.Recipes[spellID]
+-- A recipe's cast time in seconds, from the game's spell data; nil if the game doesn't say.
+local castSeconds = {}
+local function CastSeconds(spellID)
+  if castSeconds[spellID] == nil then
+    local ms
+    if C_Spell and C_Spell.GetSpellInfo then
+      local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+      ms = ok and info and info.castTime
+    elseif GetSpellInfo then
+      local ok, _, _, _, castTime = pcall(GetSpellInfo, spellID)
+      ms = ok and castTime
+    end
+    if not ms then return nil end
+    castSeconds[spellID] = ms / 1000
+  end
+  return castSeconds[spellID]
+end
+
+-- Picking a recipe and starting its queue; casts in a queue follow each other with no gap.
+local SWITCH_SECONDS = 5
+
+-- How many of an item the last Auctionator scan saw listed (its highest count that day), or nil if
+-- unknown. Auctionator keeps only the lowest price, so this says nothing about the price of the rest.
+-- Reads Auctionator's price database, which isn't part of its API.
+function ns.Listed(itemID)
+  local ok, entry = pcall(function() return Auctionator.Database.db[tostring(itemID)] end)
+  if not (ok and type(entry) == "table" and type(entry.a) == "table") then return nil end
+  local day, count
+  for d, n in pairs(entry.a) do
+    local num = tonumber(d)
+    if num and (not day or num > day) then day, count = num, n end
+  end
+  return count
+end
+
+-- `crafts` crafts of a recipe made as one batch, making materials where that's cheaper for the
+-- amount needed (see Plan): { cost, seconds, auction, vendor, short }. auction and vendor list
+-- { itemID, count } to buy, in the order first needed; short lists auction materials needing more
+-- than were listed, as { itemID, count, listed }. seconds counts every cast (the recipe's and the
+-- materials') plus SWITCH_SECONDS for each recipe used. cost or seconds is nil when a price or a
+-- cast time is missing.
+function ns.Batch(spellID, crafts)
+  local recipe, cost, casts = ns.Recipes[spellID], 0, { [spellID] = crafts }
+  local byItem, auction, vendor, short = {}, {}, {}, {}
   for i = 1, #recipe.r, 2 do
-    for _, b in ipairs(Plan(recipe.r[i], recipe.r[i + 1] * crafts, {}).buys) do
+    local plan = Plan(recipe.r[i], recipe.r[i + 1] * crafts, {})
+    cost = cost and plan.cost and cost + plan.cost
+    for id, n in pairs(plan.casts) do casts[id] = (casts[id] or 0) + n end
+    for _, b in ipairs(plan.buys) do
       local entry = byItem[b.itemID]
       if not entry then
         entry = { itemID = b.itemID, count = 0 }
@@ -307,13 +352,47 @@ function ns.Materials(spellID, crafts)
       entry.count = entry.count + b.count
     end
   end
-  return auction, vendor
+  for _, m in ipairs(auction) do
+    local listed = ns.Listed(m.itemID)
+    if listed and m.count > listed then table.insert(short, { itemID = m.itemID, count = m.count, listed = listed }) end
+  end
+  local seconds = 0
+  for id, n in pairs(casts) do
+    local cast = CastSeconds(id)
+    seconds = seconds and cast and seconds + cast * n + SWITCH_SECONDS
+  end
+  return { cost = cost, seconds = seconds, auction = auction, vendor = vendor, short = short }
+end
+
+-- Profit per hour of crafting for a batch of `crafts` (see ns.Batch), given what one craft sells
+-- for. nil when the revenue, a price or a cast time is missing.
+function ns.PerHour(spellID, crafts, revenue)
+  local batch = ns.Batch(spellID, crafts)
+  if not (revenue and batch.cost and batch.seconds and batch.seconds > 0) then return nil, batch end
+  return (revenue * crafts - batch.cost) * 3600 / batch.seconds, batch
+end
+
+-- What to buy for `crafts` crafts of a recipe: the auction house and vendor lists of ns.Batch.
+function ns.Materials(spellID, crafts)
+  local batch = ns.Batch(spellID, crafts)
+  return batch.auction, batch.vendor
+end
+
+-- Lines warning about auction materials a batch needs more of than were listed (ns.Batch's short).
+function ns.ShortLines(short)
+  local lines = {}
+  for _, s in ipairs(short) do
+    table.insert(lines, string.format("|cffff4040Only %d %s listed in your last scan; this needs %d.|r",
+      s.listed, ns.ItemName(s.itemID), s.count))
+  end
+  return lines
 end
 
 -- Replaces the Auctionator shopping list "Profit: <recipe>" with the auction house materials for
--- `crafts` crafts (see ns.Materials), and says in chat what to buy from vendors.
+-- `crafts` crafts (see ns.Batch), and says in chat what to buy from vendors.
 function ns.CreateShoppingList(spellID, crafts)
-  local auction, vendor = ns.Materials(spellID, crafts)
+  local batch = ns.Batch(spellID, crafts)
+  local auction, vendor = batch.auction, batch.vendor
   local name = "Profit: " .. ns.Recipes[spellID].n
   local function Names(list)
     local parts = {}
@@ -333,6 +412,7 @@ function ns.CreateShoppingList(spellID, crafts)
     print(string.format("|cffffd100Profit:|r %s needs nothing from the auction house.", ns.Recipes[spellID].n))
   end
   if #vendor > 0 then print("|cffffd100Profit:|r From vendors: " .. Names(vendor)) end
+  for _, line in ipairs(ns.ShortLines(batch.short)) do print("|cffffd100Profit:|r " .. line) end
 end
 
 -- Skill color of a recipe at this character's current skill: "red" (can't learn yet), "orange",
@@ -386,7 +466,8 @@ end
 -- Recipes that make no item (enchants) or look unobtainable (data issues) are left out.
 -- Grey recipes are kept: they can still be profitable.
 -- `sellTo` is passed to ns.Evaluate.
-function ns.Rank(filter, profession, search, sellTo)
+-- With `crafts`, each row also gets perHour and short for a batch of that many (see ns.PerHour).
+function ns.Rank(filter, profession, search, sellTo, crafts)
   filter = filter or "mine"
   search = search and search ~= "" and search:lower() or nil
   local rows = {}
@@ -410,6 +491,11 @@ function ns.Rank(filter, profession, search, sellTo)
       local e = ns.Evaluate(spellID, sellTo)
       e.known, e.canLearn, e.color = ns.IsKnown(spellID), ns.CanLearn(spellID), ns.Color(spellID)
       e.key, e.name = spellID, recipe.n
+      if crafts then
+        local batch
+        e.perHour, batch = ns.PerHour(spellID, crafts, e.revenue)
+        e.short = #batch.short > 0
+      end
       table.insert(rows, e)
     end
   end
@@ -511,7 +597,9 @@ function ns.SortRows(rows, key, ascending)
 end
 
 -- Breakdown of one recipe as display lines, shared by chat and the window. `sellTo` as in ns.Evaluate.
-function ns.BreakdownLines(spellID, sellTo)
+-- `crafts` (default 1) is the batch size for the gold per hour.
+function ns.BreakdownLines(spellID, sellTo, crafts)
+  crafts = crafts or 1
   local e = ns.Evaluate(spellID, sellTo)
   local r = e.recipe
   local lines = {}
@@ -568,6 +656,20 @@ function ns.BreakdownLines(spellID, sellTo)
       e.belowVendor and sellTo ~= "vendor" and sellTo ~= "highest" and "  |cffff4040(vendor it instead)|r" or "")
     add("Profit%s: %s", e.soldTo == "vendor" and " (sold to vendor)" or sellTo and e.soldTo == "auction"
       and " (sold on auction house)" or "", FormatMoney(e.profit))
+    local perHour, batch = ns.PerHour(spellID, crafts, e.revenue)
+    local batchRevenue = e.revenue and e.revenue * crafts
+    add(" ")
+    add("|cffffd100Batch of %d|r", crafts)
+    add("Materials: %s", FormatMoney(batch.cost))
+    add("Sells for: %s", FormatMoney(batchRevenue))
+    add("Profit: %s", FormatMoney(batchRevenue and batch.cost and batchRevenue - batch.cost))
+    add("Crafting time: %s", batch.seconds
+      and string.format("%dm %02ds", math.floor(batch.seconds / 60), math.floor(batch.seconds % 60)) or "unknown")
+    add("Gold per hour: %s", perHour and FormatMoney(perHour)
+      or batch.seconds and "no price" or "unknown (the game gave no cast time)")
+    add("|cffa0a0a0Cast times of the recipe and the materials you make, plus %d s per recipe used. " ..
+      "Buying and selling take extra.|r", SWITCH_SECONDS)
+    for _, line in ipairs(ns.ShortLines(batch.short)) do add("%s", line) end
     if e.disenchant then
       add(" ")
       add("Disenchants into%s:", r.m[2] > 1 and string.format(" (each of %d)", r.m[2]) or "")
@@ -662,6 +764,9 @@ local API_FEATURES = {
   { "Disenchant deals (AH search)", { "Auctionator", "Auctionator.API.v1.MultiSearchExact" }, optional = true },
   { "Shopping lists", { "Auctionator", "Auctionator.API.v1.CreateShoppingList", "Auctionator.API.v1.ConvertToSearchString" },
     optional = true },
+  { "Cast times (gold per hour)", { "C_Spell", "C_Spell.GetSpellInfo" }, { "GetSpellInfo", "GetSpellInfo" },
+    optional = true },
+  { "Listed quantities", { "Auctionator price database", "Auctionator.Database.db" }, optional = true },
   { "Item tooltip", { "tooltip data", "TooltipDataProcessor.AddTooltipPostCall", "Enum.TooltipDataType" },
     { "OnTooltipSetItem", "GameTooltip.HookScript", "GameTooltip.GetItem" } },
   { "Addon version", { "C_AddOns", "C_AddOns.GetAddOnMetadata" }, { "GetAddOnMetadata", "GetAddOnMetadata" },

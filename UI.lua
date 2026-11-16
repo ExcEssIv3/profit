@@ -18,12 +18,15 @@ local DEFAULT_FILTER = 2 -- Known only
 -- Where crafted items are sold, for revenue and profit (see ns.Evaluate).
 local SELL_TO = { { "auction", "Sell: AH" }, { "vendor", "Sell: Vendor" }, { "highest", "Sell: Highest" } }
 local RevenueText -- defined below; needs state
+local PerHourText -- defined below; needs Money
 -- key, title, width, justify, title in "Disenchant from AH" ("" hides the column). fit: shrink to
 -- the widest value in the list (width is the most it takes), and give the rest to the "name" column;
 -- text(e) is the cell's text when it isn't the colored money value.
 local COLUMNS = {
   { "favorite", "", 20, "CENTER", "" }, -- the favorite star (row.star), not text
   { "profit", "Profit", 100, "RIGHT", "Profit", fit = true },
+  -- gold per hour for a batch of state.crafts (ns.PerHour); "!" when the last scan listed too few materials
+  { "perHour", "Gold/h", 110, "RIGHT", "", fit = true, text = function(e) return PerHourText(e) end },
   { "name", "Recipe", 160, "LEFT", "Item" },
   { "yellow", "Skill", 110, "LEFT", "Skill" },
   { "cost", "Cost", 90, "RIGHT", "Buy for" },
@@ -34,7 +37,7 @@ local LIST_WIDTH = 0
 for _, c in ipairs(COLUMNS) do LIST_WIDTH = LIST_WIDTH + c[3] end
 
 local state = { filter = DEFAULT_FILTER, profession = nil, sellTo = "auction", search = "", sortKey = "profit", ascending = false,
-  offset = 0 }
+  offset = 0, crafts = 1 }
 local rows, window, Update = {}
 
 local function Money(copper, colorSign)
@@ -51,6 +54,10 @@ function RevenueText(e)
     return Money(e.revenue) .. " |cffa0a0a0(vendor)|r"
   end
   return Money(e.revenue) .. (state.sellTo == "auction" and e.belowVendor and " |cffff4040v|r" or "")
+end
+
+function PerHourText(e)
+  return Money(e.perHour, true) .. (e.short and " |cffff4040!|r" or "")
 end
 
 -- Profession dropdown choices: the character's own professions, or every profession for
@@ -106,11 +113,10 @@ local function ShowDetail(key)
   local canList = key ~= nil and not itemID and Auctionator and Auctionator.API and Auctionator.API.v1
     and Auctionator.API.v1.CreateShoppingList ~= nil
   window.shopping:SetShown(canList)
-  window.crafts:SetShown(canList)
   if key and not itemID then
     window.favorite:SetText(ns.IsFavorite(key) and "Unfavorite" or "Favorite")
   end
-  local lines = itemID and ns.DisenchantLines(itemID) or key and ns.BreakdownLines(key, state.sellTo)
+  local lines = itemID and ns.DisenchantLines(itemID) or key and ns.BreakdownLines(key, state.sellTo, state.crafts)
   window.detail:SetText(lines and table.concat(lines, "\n") or DisenchantMode() and
     "Gear on the auction house worth more disenchanted than its price, from your last Auctionator " ..
     "scan. Select an item for what it disenchants into; with the auction house open, clicking it " ..
@@ -176,6 +182,7 @@ local function SetRow(row, e)
     row.cells.cost:SetText(Money(e.cost))
     row.cells.revenue:SetText(Money(e.deValue))
     row.cells.deProfit:SetText("")
+    row.cells.perHour:SetText("")
   else
     local code = e.color and ns.ColorCodes[e.color]
     row.cells.name:SetText(code and ("|c" .. code .. e.name .. "|r") or e.name)
@@ -183,6 +190,7 @@ local function SetRow(row, e)
     row.cells.cost:SetText(Money(e.cost))
     row.cells.revenue:SetText(RevenueText(e))
     row.cells.deProfit:SetText(Money(e.deProfit, true))
+    row.cells.perHour:SetText(PerHourText(e))
   end
   row.cells.profit:SetText(Money(e.profit, true))
 end
@@ -196,6 +204,7 @@ function Update()
   window.professionDropdown:SetShown(not deMode)
   window.sellDropdown:Refresh(SellLabel())
   window.sellDropdown:SetShown(not deMode)
+  window.crafts:SetShown(not deMode) -- the batch size only applies to recipes
   for _, header in ipairs(window.headers) do header:SetText(deMode and header.col[5] or header.col[2]) end
 
   local list, tooHigh
@@ -205,7 +214,7 @@ function Update()
   else
     local profession = state.profession or nil
     if profession == "main" then profession = ns.MainProfessions() end
-    list = ns.Rank(filter[1], profession, state.search, state.sellTo)
+    list = ns.Rank(filter[1], profession, state.search, state.sellTo, state.crafts)
     for _, e in ipairs(list) do e.yellow = e.recipe.y end
   end
   ns.SortRows(list, state.sortKey, state.ascending)
@@ -361,7 +370,7 @@ local function CreateWindow()
     header:SetNormalFontObject("GameFontNormalSmall")
     header:SetHighlightFontObject("GameFontHighlightSmall")
     header:SetText(col[2])
-    header:GetFontString():SetJustifyH(col[1] == "profit" and "LEFT" or col[4])
+    header:GetFontString():SetJustifyH("LEFT") -- every title starts at its column's left edge
     header:GetFontString():SetAllPoints()
     table.insert(f.headers, header)
     header:SetScript("OnClick", function()
@@ -505,14 +514,23 @@ local function CreateWindow()
   crafts:SetAutoFocus(false)
   crafts:SetNumeric(true)
   crafts:SetMaxLetters(3)
-  crafts:SetText("1")
-  crafts:SetScript("OnEnterPressed", crafts.ClearFocus)
-  crafts:SetScript("OnEscapePressed", crafts.ClearFocus)
-  shopping:SetScript("OnClick", function()
-    crafts:ClearFocus()
+  crafts:SetText(state.crafts)
+  -- The batch size changes Gold/h for every row, so a new number redraws the list.
+  local function Commit()
     local count = math.max(1, tonumber(crafts:GetText()) or 1)
     crafts:SetText(count)
-    local ok, err = pcall(ns.CreateShoppingList, state.selected, count)
+    if count ~= state.crafts then
+      state.crafts = count
+      Update()
+    end
+  end
+  crafts:SetScript("OnEnterPressed", crafts.ClearFocus)
+  crafts:SetScript("OnEscapePressed", crafts.ClearFocus)
+  crafts:SetScript("OnEditFocusLost", Commit)
+  shopping:SetScript("OnClick", function()
+    crafts:ClearFocus()
+    Commit()
+    local ok, err = pcall(ns.CreateShoppingList, state.selected, state.crafts)
     if not ok then print("|cffffd100Profit:|r couldn't create the shopping list: " .. tostring(err)) end
   end)
   local function Tip(frame, text)
@@ -526,7 +544,8 @@ local function CreateWindow()
   Tip(shopping, "Create an Auctionator shopping list with the materials for the number of crafts " ..
     "on the right. Materials you can make are replaced by what they're made from when making that many " ..
     "costs less than buying them.")
-  Tip(crafts, "Number of crafts")
+  Tip(crafts, "Crafts in one batch, for the shopping list and Gold/h. Gold/h counts the cast times of " ..
+    "the recipe and the materials you make, plus a few seconds each time you switch recipe.")
   f.shopping, f.crafts = shopping, crafts
 
   f.measure = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") -- for ColumnWidths
