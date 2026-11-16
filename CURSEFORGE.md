@@ -4,7 +4,7 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 
 *   **Material cost**, using auction prices, vendor prices for vendor-bought materials like thread, dye and vials, or the crafting cost of materials you can make yourself (like bolts of cloth) when that's cheaper
 *   **What it sells for** after the auction house cut, and a warning when a vendor would pay more
-*   **Profit** per craft
+*   **Profit** per craft, and as a **%** of the cost, to pick crafts when you have little gold to spend
 *   **Craft** dropdown: make the materials you can make when it's cheapest, only when it gives more gold per hour, or never
 *   **Gold per hour** for a batch of crafts, counting the cast times of the recipe and of the materials you make yourself, with a warning when the auction house didn't have enough of a material in your last scan
 *   **Vendor flips**: rank crafts by what a vendor pays instead of the auction house, or by whichever pays more

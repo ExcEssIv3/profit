@@ -282,9 +282,9 @@ function ns.Evaluate(spellID, sellTo, crafts)
     elseif sellTo ~= "highest" or not vendor then
       table.insert(result.missing, itemID)
     end
-    -- "goldh": the batch's buy-or-make choice (ns.Batch), so Cost and Profit agree with Gold/h:
-    -- per craft they are the batch's averages, whole crafts of the materials included.
-    if ns.CraftMode() == "goldh" and result.revenue then
+    -- Cost and Profit are per craft of the batch (ns.Batch), so they agree with Gold/h: its buy-or-make
+    -- choices and whole crafts of the materials included.
+    do
       local batch = ns.Batch(spellID, crafts or 1, result.revenue)
       result.batch = batch
       if batch.cost then
@@ -298,6 +298,8 @@ function ns.Evaluate(spellID, sellTo, crafts)
     end
     if result.revenue and result.cost then
       result.profit = result.revenue - result.cost
+      -- Profit per copper spent on materials, in percent: the best use of a small budget.
+      if result.cost > 0 then result.margin = result.profit / result.cost * 100 end
     end
     -- Crafting to disenchant: each made item is disenchanted separately.
     local deValue, outcomes = ns.DisenchantValue(itemID)
@@ -720,7 +722,8 @@ function ns.BreakdownLines(spellID, sellTo, crafts)
     end
     visiting[itemID] = nil
   end
-  -- The same for "goldh", from the batch's tree (Plan's nodes), per craft of the batch.
+  -- The same from the batch's tree (Plan's nodes), per craft of the batch. AddMadeFrom stays for
+  -- materials not priced from a batch (recipes that make no item, or a batch missing a price).
   local function AddNode(node, depth)
     for _, child in ipairs(node.children) do
       local each = child.cost and child.cost / child.count
@@ -747,8 +750,9 @@ function ns.BreakdownLines(spellID, sellTo, crafts)
     add("Sells for (after %d%% cut): %s", AH_CUT * 100, FormatMoney(e.ahRevenue))
     add("Vendor value: %s%s", e.vendorValue and FormatMoney(e.vendorValue) or "can't be sold to vendors",
       e.belowVendor and sellTo ~= "vendor" and sellTo ~= "highest" and "  |cffff4040(vendor it instead)|r" or "")
-    add("Profit%s: %s", e.soldTo == "vendor" and " (sold to vendor)" or sellTo and e.soldTo == "auction"
-      and " (sold on auction house)" or "", FormatMoney(e.profit))
+    add("Profit%s: %s%s", e.soldTo == "vendor" and " (sold to vendor)" or sellTo and e.soldTo == "auction"
+      and " (sold on auction house)" or "", FormatMoney(e.profit),
+      e.margin and string.format(" (%d%% of the cost)", math.floor(e.margin + 0.5)) or "")
     local perHour, batch = ns.PerHour(spellID, crafts, e.revenue, e.batch)
     local batchRevenue = e.revenue and e.revenue * crafts
     add(" ")

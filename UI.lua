@@ -22,12 +22,15 @@ local SELL_TO = { { "auction", "Sell: AH" }, { "vendor", "Sell: Vendor" }, { "hi
 local CRAFT_MODES = { { "cheapest", "Craft: cheapest" }, { "goldh", "Craft: best gold/h" }, { "buy", "Craft: never" } }
 local RevenueText -- defined below; needs state
 local PerHourText -- defined below; needs Money
+local MarginText -- defined below; needs Money
 -- key, title, width, justify, title in "Disenchant from AH" ("" hides the column). fit: shrink to
 -- the widest value in the list (width is the most it takes), and give the rest to the "name" column;
 -- text(e) is the cell's text when it isn't the colored money value.
 local COLUMNS = {
   { "favorite", "", 20, "CENTER", "" }, -- the favorite star (row.star), not text
   { "profit", "Profit", 100, "RIGHT", "Profit", fit = true },
+  -- profit as a share of the cost (ns.Evaluate's margin): what each gold spent brings back
+  { "margin", "%", 60, "RIGHT", "", fit = true, text = function(e) return MarginText(e) end },
   -- gold per hour for a batch of state.crafts (ns.PerHour); "!" when the last scan listed too few materials
   { "perHour", "Gold/h", 110, "RIGHT", "", fit = true, text = function(e) return PerHourText(e) end },
   { "name", "Recipe", 160, "LEFT", "Item" },
@@ -57,6 +60,11 @@ function RevenueText(e)
     return Money(e.revenue) .. " |cffa0a0a0(vendor)|r"
   end
   return Money(e.revenue) .. (state.sellTo == "auction" and e.belowVendor and " |cffff4040v|r" or "")
+end
+
+function MarginText(e)
+  if not e.margin then return "|cff808080-|r" end
+  return string.format("%s%d%%|r", e.margin < 0 and "|cffff4040" or "|cff40c040", math.floor(e.margin + 0.5))
 end
 
 function PerHourText(e)
@@ -186,6 +194,7 @@ local function SetRow(row, e)
     row.cells.revenue:SetText(Money(e.deValue))
     row.cells.deProfit:SetText("")
     row.cells.perHour:SetText("")
+    row.cells.margin:SetText("")
   else
     local code = e.color and ns.ColorCodes[e.color]
     row.cells.name:SetText(code and ("|c" .. code .. e.name .. "|r") or e.name)
@@ -194,6 +203,7 @@ local function SetRow(row, e)
     row.cells.revenue:SetText(RevenueText(e))
     row.cells.deProfit:SetText(Money(e.deProfit, true))
     row.cells.perHour:SetText(PerHourText(e))
+    row.cells.margin:SetText(MarginText(e))
   end
   row.cells.profit:SetText(Money(e.profit, true))
 end

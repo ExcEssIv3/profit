@@ -32,6 +32,7 @@ In game, after an Auctionator scan:
   ones you have, or one profession); click a column to sort and a recipe for its breakdown;
   clicking a recipe you know also opens it in your profession window. The Skill column shows
   where an unlearned recipe comes from (trainer, pattern or both) and the skill to learn it.
+  The **%** column is the profit as a share of the cost, for picking crafts on a small budget.
   Recipe names are colored by skill-up chance at your skill; grey recipes are listed too,
   since they can still be profitable. The Disenchant column is the profit from disenchanting
   the crafted item instead of selling it, using the expected value of its materials.
@@ -49,12 +50,12 @@ In game, after an Auctionator scan:
   plus 5 s for each recipe used (queued casts follow each other; switching recipe doesn't). Cast
   times come from the game's spell data. A red "!" means the last scan listed fewer of a material
   than the batch needs; Auctionator keeps only the lowest price, so the rest may cost more.
+  Cost, Profit and the material lines in the details are per craft of that batch, so they agree with Gold/h.
   The **Craft** dropdown next to the search box (saved as `ProfitDB.craftMode`) picks how
   materials you can make are handled, for Cost, Profit, Gold/h, the details and the shopping list:
   *cheapest* (the default) makes them when that costs less; *best gold/h* makes them only when that
   gives more gold per hour for the batch in the box, charging the time they take at the batch's own
-  rate and re-picking until the rate stops improving (Dinkelbach's method), and then Cost, Profit and
-  the details are that batch's averages per craft, so they agree with Gold/h; *never* buys
+  rate and re-picking until the rate stops improving (Dinkelbach's method); *never* buys
   everything. With a recipe that loses money, *best gold/h* picks like *cheapest*.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
