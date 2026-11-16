@@ -404,6 +404,67 @@ local function OnCommoditySearch(itemID)
   ns.Refresh()
 end
 
+-- Material scan: searches materials one at a time through Auctionator's search queue (which waits
+-- out the server's throttle and retries searches the server drops), so each one's auctions reach
+-- OnCommoditySearch, as if selected in Auctionator. scan = { items, index, token } while running; a
+-- material whose results don't arrive within SEARCH_TIMEOUT seconds is skipped.
+local SEARCH_TIMEOUT = 10
+local scan, auctionHouseOpen = nil, false
+
+function ns.CanScanMaterials()
+  return auctionHouseOpen and C_AuctionHouse and C_AuctionHouse.MakeItemKey and Auctionator.AH
+    and Auctionator.AH.SendSearchQueryByItemKey and Auctionator.Constants
+    and Auctionator.Constants.CommodityResultsSorts and true or false
+end
+
+-- Materials searched so far and how many in all, or nil when not scanning.
+function ns.MaterialScanProgress()
+  if scan then return scan.index, #scan.items end
+end
+
+function ns.StopMaterialScan()
+  scan = nil
+  ns.Refresh()
+end
+
+local function NextSearch()
+  if not scan then return end
+  scan.index = scan.index + 1
+  local itemID = scan.items[scan.index]
+  if not (itemID and ns.CanScanMaterials()) then return ns.StopMaterialScan() end
+  local token = {}
+  scan.token = token
+  Auctionator.AH.SendSearchQueryByItemKey(C_AuctionHouse.MakeItemKey(itemID),
+    Auctionator.Constants.CommodityResultsSorts, false)
+  C_Timer.After(SEARCH_TIMEOUT, function()
+    if scan and scan.token == token then NextSearch() end
+  end)
+  ns.Refresh()
+end
+
+-- Searches the auction materials of these recipes, and of the recipes making their materials when
+-- materials may be made, skipping unlimited vendor items and items Auctionator has no price for
+-- (Profit only uses auctions next to that price, see Ladder).
+function ns.ScanMaterials(spellIDs)
+  local items, seen = {}, {}
+  local function Add(spellID)
+    local recipe = ns.Recipes[spellID]
+    for i = 1, #recipe.r, 2 do
+      local itemID = recipe.r[i]
+      if not seen[itemID] then
+        seen[itemID] = true
+        if ns.VendorSupply(itemID) ~= "unlimited" and AuctionPrice(itemID) then table.insert(items, itemID) end
+        if ns.CraftMaterials() then
+          for _, maker in ipairs(MadeBy[itemID] or {}) do Add(maker) end
+        end
+      end
+    end
+  end
+  for _, spellID in ipairs(spellIDs) do Add(spellID) end
+  scan = { items = items, index = 0 }
+  NextSearch()
+end
+
 function ns.WatchMarket()
   market = ProfitDB.market and ProfitDB.market[MarketKey()]
   -- Errors here must not break Auctionator's own handling of the scan.
@@ -428,6 +489,21 @@ function ns.WatchMarket()
       if type(itemID) == "number" then onSearch(itemID) end
     end)
   end
+  -- Material scan: the next search starts once Auctionator has the current one's results (any
+  -- search's: one the player starts replaces ours). Deferred, since Auctionator stops listening for
+  -- results right after firing this.
+  pcall(function()
+    Auctionator.EventBus:Register({ ReceiveEvent = function()
+      if scan then C_Timer.After(0, NextSearch) end
+    end }, { Auctionator.AH.Events.CommoditySearchResultsReady, Auctionator.AH.Events.ItemSearchResultsReady })
+  end)
+  local house = CreateFrame("Frame")
+  for _, event in ipairs({ "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED" }) do pcall(house.RegisterEvent, house, event) end
+  house:SetScript("OnEvent", function(_, event)
+    auctionHouseOpen = event == "AUCTION_HOUSE_SHOW"
+    if not auctionHouseOpen then scan = nil end
+    ns.Refresh()
+  end)
 end
 
 -- An item's kept rungs and the index of the first one to use. When Auctionator has done a full scan
@@ -1045,6 +1121,8 @@ local API_FEATURES = {
     "Auctionator.FullScan.Events.ScanComplete" }, optional = true },
   { "Market depth (item searches)", { "C_AuctionHouse", "C_AuctionHouse.GetNumCommoditySearchResults",
     "C_AuctionHouse.GetCommoditySearchResultInfo", "C_AuctionHouse.HasFullCommoditySearchResults" }, optional = true },
+  { "Material scan", { "Auctionator search queue", "Auctionator.AH.SendSearchQueryByItemKey",
+    "C_AuctionHouse.MakeItemKey", "Auctionator.AH.Events.CommoditySearchResultsReady" }, optional = true },
   { "Item tooltip", { "tooltip data", "TooltipDataProcessor.AddTooltipPostCall", "Enum.TooltipDataType" },
     { "OnTooltipSetItem", "GameTooltip.HookScript", "GameTooltip.GetItem" } },
   { "Addon version", { "C_AddOns", "C_AddOns.GetAddOnMetadata" }, { "GetAddOnMetadata", "GetAddOnMetadata" },

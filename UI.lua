@@ -219,6 +219,10 @@ function Update()
   window.sellDropdown:SetShown(not deMode)
   window.crafts:SetShown(not deMode) -- the batch size only applies to recipes
   window.craftDropdown:SetShown(not deMode)
+  local searched, total = ns.MaterialScanProgress()
+  window.scanButton:SetShown(not deMode)
+  window.scanButton:SetEnabled(searched ~= nil or ns.CanScanMaterials())
+  window.scanButton:SetText(searched and string.format("Stop (%d/%d)", searched, total) or "Scan materials")
   for _, mode in ipairs(CRAFT_MODES) do
     if mode[1] == ns.CraftMode() then window.craftDropdown:Refresh(mode[2]) end
   end
@@ -573,6 +577,21 @@ local function CreateWindow()
   Tip(crafts, "Crafts in one batch, for the shopping list and Gold/h. Gold/h counts the cast times of " ..
     "the recipe and the materials you make, plus a few seconds each time you switch recipe.")
   f.shopping, f.crafts = shopping, crafts
+
+  -- Searches the listed recipes' auction materials for all their auctions (ns.ScanMaterials).
+  local scanButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+  scanButton:SetSize(140, 22)
+  scanButton:SetPoint("BOTTOMLEFT", 14, 36)
+  scanButton:SetScript("OnClick", function()
+    if ns.MaterialScanProgress() then return ns.StopMaterialScan() end
+    local spellIDs = {}
+    for _, e in ipairs(state.list or {}) do table.insert(spellIDs, e.key) end
+    ns.ScanMaterials(spellIDs)
+  end)
+  Tip(scanButton, "With the auction house open, search every auction material of the recipes in the list " ..
+    "(and of the materials you can make) for all its auctions, so batches are priced from them. Faster " ..
+    "than a full scan; searching in Auctionator meanwhile skips a material.")
+  f.scanButton = scanButton
 
   f.measure = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") -- for ColumnWidths
   f.measure:SetAlpha(0) -- invisible but laid out, so its width can be measured

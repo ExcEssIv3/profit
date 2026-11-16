@@ -53,8 +53,10 @@ In game, after an Auctionator scan:
   faction) and walks them cheapest first, so one cheap listing no longer sets the price of the whole
   batch. It sees them in Auctionator's full scan when that reads every auction (on WoW Forever's auction
   house, "Use alternate slower scan mode by default" in Auctionator's Advanced options; the fast scan gets
-  only each item's lowest price and total), and when you select a material in Auctionator's search
-  results. The details say which materials have only Auctionator's lowest price. Auctions seen before
+  only each item's lowest price and total), when you select a material in Auctionator's search
+  results, and with **Scan materials** below the list: with the auction house open, it searches each auction
+  material of the listed recipes (and of the materials you can make) through Auctionator's search queue,
+  one at a time, skipping items Auctionator has no price for. The details say which materials have only Auctionator's lowest price. Auctions seen before
   Auctionator's latest full scan that are below its lowest price are taken as gone. A red "!" means
   fewer were listed than the batch needs; the rest are priced at the dearest auction seen.
   Cost, Profit and the material lines in the details are per craft of that batch, so they agree with Gold/h.
