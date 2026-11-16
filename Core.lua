@@ -476,18 +476,28 @@ function ns.BreakdownLines(spellID, sellTo)
   end
 
   add(" ")
-  for _, reagent in ipairs(e.reagents) do
-    local note = reagent.priceSource == "vendor" and " (vendor)" or ""
-    if reagent.craftedBy then
-      -- What crafting this many takes, e.g. "(crafted from 9x Wool Cloth)".
-      local sub, made = ns.Recipes[reagent.craftedBy], {}
-      for i = 1, #sub.r, 2 do
-        table.insert(made, string.format("%gx %s", sub.r[i + 1] * reagent.count / sub.m[2], ItemName(sub.r[i])))
-      end
-      note = " |cffa0a0a0(crafted from " .. table.concat(made, ", ") .. ")|r"
+  -- What a material priced at its crafting cost is made from, down the chain, with the same choices
+  -- and prices as the cost, e.g. "    from 9x Wool Cloth: 1s 80c (20c each)". `visiting` as in
+  -- ReagentPrice: the materials being made further up.
+  local function AddMadeFrom(itemID, count, spellID, depth, visiting)
+    local sub = ns.Recipes[spellID]
+    visiting[itemID] = true
+    for i = 1, #sub.r, 2 do
+      local subID, subCount = sub.r[i], sub.r[i + 1] * count / sub.m[2]
+      local price, source, craftedBy = ReagentPrice(subID, visiting)
+      add("|cffa0a0a0%sfrom %gx %s: %s%s%s|r", string.rep("    ", depth), subCount, ItemName(subID),
+        price and FormatMoney(price * subCount) or "no price",
+        price and string.format(" (%s each)", FormatMoney(price)) or "",
+        source == "vendor" and " (vendor)" or source == "crafted" and " (crafted)" or "")
+      if craftedBy then AddMadeFrom(subID, subCount, craftedBy, depth + 1, visiting) end
     end
+    visiting[itemID] = nil
+  end
+  for _, reagent in ipairs(e.reagents) do
+    local note = reagent.priceSource == "vendor" and " (vendor)" or reagent.craftedBy and " (crafted)" or ""
     add("%dx %s: %s%s", reagent.count, ItemName(reagent.itemID),
       reagent.price and FormatMoney(reagent.price * reagent.count) or "no price", note)
+    if reagent.craftedBy then AddMadeFrom(reagent.itemID, reagent.count, reagent.craftedBy, 1, {}) end
   end
   add("Cost: %s", FormatMoney(e.cost))
   if r.m then
