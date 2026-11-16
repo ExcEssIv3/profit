@@ -7,6 +7,7 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 *   **Profit** per craft, and as a **%** of the cost, to pick crafts when you have little gold to spend
 *   **Craft** dropdown: make the materials you can make when it's cheapest, only when it gives more gold per hour, or never
 *   **Gold per hour** for a batch of crafts, counting the cast times of the recipe and of the materials you make yourself, with a warning when the auction house didn't have enough of a material in your last scan
+*   **Market depth**: a batch's materials are priced from every auction Profit has seen (in a full scan with Auctionator's slower scan mode, or when you select the material in Auctionator's search results), cheapest first, not just the lowest price, so one cheap listing doesn't throw off the numbers
 *   **Vendor flips**: rank crafts by what a vendor pays instead of the auction house, or by whichever pays more
 *   **Skill color** at your current level (grey recipes are included, since they can still be profitable)
 *   **Where to learn it** if you don't know it yet: trainer (with the skill needed), pattern or recipe item (with its vendor or auction price), or both, plus where it drops, which vendor sells it, or which quest gives it

@@ -48,8 +48,15 @@ In game, after an Auctionator scan:
   The same box sets the batch for the **Gold/h** column: the profit of that many crafts divided by
   the time they take, i.e. the cast times of the recipe and of the materials made along the way,
   plus 5 s for each recipe used (queued casts follow each other; switching recipe doesn't). Cast
-  times come from the game's spell data. A red "!" means the last scan listed fewer of a material
-  than the batch needs; Auctionator keeps only the lowest price, so the rest may cost more.
+  times come from the game's spell data. Auction materials for the batch cost what buying that many
+  would: Profit keeps every auction of each material it sees (saved as `ProfitDB.market`, per realm and
+  faction) and walks them cheapest first, so one cheap listing no longer sets the price of the whole
+  batch. It sees them in Auctionator's full scan when that reads every auction (on WoW Forever's auction
+  house, "Use alternate slower scan mode by default" in Auctionator's Advanced options; the fast scan gets
+  only each item's lowest price and total), and when you select a material in Auctionator's search
+  results. The details say which materials have only Auctionator's lowest price. Auctions seen before
+  Auctionator's latest full scan that are below its lowest price are taken as gone. A red "!" means
+  fewer were listed than the batch needs; the rest are priced at the dearest auction seen.
   Cost, Profit and the material lines in the details are per craft of that batch, so they agree with Gold/h.
   The **Craft** dropdown next to the search box (saved as `ProfitDB.craftMode`) picks how
   materials you can make are handled, for Cost, Profit, Gold/h, the details and the shopping list:

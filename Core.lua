@@ -283,7 +283,7 @@ function ns.Evaluate(spellID, sellTo, crafts)
       table.insert(result.missing, itemID)
     end
     -- Cost and Profit are per craft of the batch (ns.Batch), so they agree with Gold/h: its buy-or-make
-    -- choices and whole crafts of the materials included.
+    -- choices, whole crafts of the materials and the auctions it buys from (AuctionCost) included.
     do
       local batch = ns.Batch(spellID, crafts or 1, result.revenue)
       result.batch = batch
@@ -312,6 +312,178 @@ function ns.Evaluate(spellID, sellTo, crafts)
   return result
 end
 
+-- Market depth: every auction of each material, kept from Auctionator's full scans and from item
+-- searches (Auctionator itself saves only the lowest price), so a batch's materials cost what buying
+-- that many would. ProfitDB.market["realm-faction"] = { time, items = { [itemID] = rungs } }, where
+-- rungs is { unit price, count, unit price, count, ..., t = when seen } by price, cheapest first. The
+-- full scan event is Auctionator's, not part of its API; without it prices are Auctionator's lowest.
+local materials, market = {}, nil
+for _, recipe in pairs(ns.Recipes) do
+  for i = 1, #recipe.r, 2 do materials[recipe.r[i]] = true end
+end
+
+local function MarketKey()
+  return (GetRealmName() or "") .. "-" .. (UnitFactionGroup("player") or "")
+end
+
+-- Full scan entries -> { [itemID] = rungs }, materials only. Each entry holds the auction's
+-- GetAuctionItemInfo (legacy auction house) or GetReplicateItemInfo values, which share indexes.
+local function Rungs(entries)
+  local counts = {}
+  for _, entry in ipairs(entries) do
+    local info = type(entry) == "table" and (entry.replicateInfo or entry.auctionInfo)
+    info = type(info) == "table" and info
+    local itemID, count, buyout = info and info[17], info and info[3], info and info[10]
+    if materials[itemID] and type(count) == "number" and count > 0 and type(buyout) == "number" and buyout > 0
+      and ns.VendorSupply(itemID) ~= "unlimited" then
+      local price = math.ceil(buyout / count)
+      counts[itemID] = counts[itemID] or {}
+      counts[itemID][price] = (counts[itemID][price] or 0) + count
+    end
+  end
+  local byItem, now = {}, time()
+  for itemID, byPrice in pairs(counts) do
+    local prices, rungs = {}, { t = now }
+    for price in pairs(byPrice) do table.insert(prices, price) end
+    table.sort(prices)
+    for _, price in ipairs(prices) do
+      table.insert(rungs, price)
+      table.insert(rungs, byPrice[price])
+    end
+    byItem[itemID] = rungs
+  end
+  return byItem
+end
+
+local function SaveMarket(items)
+  market = { time = time(), items = items }
+  ProfitDB.market = ProfitDB.market or {}
+  ProfitDB.market[MarketKey()] = market
+end
+
+-- A full scan sees every auction, so it replaces what was kept. Only the full scan that reads every
+-- auction (legacy auction house, or "Use alternate slower scan mode" in Auctionator's Advanced options
+-- on the modern one) fires this; the fast one sees only each item's lowest price and total.
+local function OnFullScan(rawFullScan)
+  SaveMarket(Rungs(rawFullScan))
+  ns.Refresh()
+end
+
+-- A commodity search (selecting an item in Auctionator's search results, or the selling tab) lists the
+-- item's auctions by unit price, cheapest first. When not all have loaded, its rungs replace the kept ones
+-- up to its dearest price (where loading may stop partway) and the kept ones above that stay.
+local function OnCommoditySearch(itemID)
+  if not (materials[itemID] and ns.VendorSupply(itemID) ~= "unlimited") then return end
+  local rungs = { t = time() }
+  for i = 1, C_AuctionHouse.GetNumCommoditySearchResults(itemID) do
+    local info = C_AuctionHouse.GetCommoditySearchResultInfo(itemID, i)
+    if info and info.unitPrice and info.unitPrice > 0 and info.quantity and info.quantity > 0 then
+      if rungs[#rungs - 1] == info.unitPrice then
+        rungs[#rungs] = rungs[#rungs] + info.quantity
+      else
+        table.insert(rungs, info.unitPrice)
+        table.insert(rungs, info.quantity)
+      end
+    end
+  end
+  if #rungs == 0 then return end
+  if not market then SaveMarket({}) end
+  local old = market.items[itemID]
+  if old and not C_AuctionHouse.HasFullCommoditySearchResults(itemID) then
+    local top = rungs[#rungs - 1]
+    for i = 1, #old, 2 do
+      if old[i] == top then
+        rungs[#rungs] = math.max(rungs[#rungs], old[i + 1])
+      elseif old[i] > top then
+        table.insert(rungs, old[i])
+        table.insert(rungs, old[i + 1])
+      end
+    end
+  end
+  market.items[itemID], market.time = rungs, time()
+  ns.Refresh()
+end
+
+function ns.WatchMarket()
+  market = ProfitDB.market and ProfitDB.market[MarketKey()]
+  -- Errors here must not break Auctionator's own handling of the scan.
+  local function Safely(handler)
+    return function(data)
+      local ok, err = pcall(handler, data)
+      if not ok then print("|cffffd100Profit:|r couldn't read the auction house results: " .. tostring(err)) end
+    end
+  end
+  local onFullScan = Safely(OnFullScan)
+  pcall(function()
+    Auctionator.EventBus:Register({ ReceiveEvent = function(_, _, rawFullScan)
+      if type(rawFullScan) == "table" then onFullScan(rawFullScan) end
+    end }, { Auctionator.FullScan.Events.ScanComplete })
+  end)
+  if C_AuctionHouse and C_AuctionHouse.GetCommoditySearchResultInfo then
+    local onSearch, events = Safely(OnCommoditySearch), CreateFrame("Frame")
+    for _, event in ipairs({ "COMMODITY_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_ADDED" }) do
+      pcall(events.RegisterEvent, events, event)
+    end
+    events:SetScript("OnEvent", function(_, _, itemID)
+      if type(itemID) == "number" then onSearch(itemID) end
+    end)
+  end
+end
+
+-- An item's kept rungs and the index of the first one to use. When Auctionator has done a full scan
+-- since they were seen, its lowest price is newer, so rungs below it are gone (sold or expired).
+-- nil when nothing's kept.
+local function Ladder(itemID)
+  local rungs = market and market.items[itemID]
+  local low = rungs and AuctionPrice(itemID)
+  if not low then return nil end
+  local state = type(Auctionator.SavedState) == "table" and Auctionator.SavedState or {}
+  local fresh = (rungs.t or 0) >= math.max(state.TimeOfLastBrowseScan or 0, state.TimeOfLastReplicateScan or 0,
+    state.TimeOfLastGetAllScan or 0)
+  for i = 1, #rungs, 2 do
+    if fresh or rungs[i] >= low then return rungs, i end
+  end
+end
+
+-- What buying `count` of an auction item costs once `from` have been bought for the same batch: its
+-- auctions cheapest first (part of the last stack, pro rata), anything past them at the dearest
+-- price seen. Without kept auctions, Auctionator's lowest price for all of them.
+local function AuctionCost(itemID, from, count)
+  local rungs, first = Ladder(itemID)
+  if not rungs then
+    local price = AuctionPrice(itemID)
+    return price and price * count
+  end
+  local cost, finish, seen = 0, from + count, 0
+  for i = first, #rungs, 2 do
+    local price, n = rungs[i], rungs[i + 1]
+    local lo, hi = math.max(from, seen), math.min(finish, seen + n)
+    if hi > lo then cost = cost + (hi - lo) * price end
+    seen = seen + n
+    if seen >= finish then return cost end
+  end
+  return cost + (finish - math.max(from, seen)) * rungs[#rungs - 1]
+end
+
+-- How many of an item are listed: the kept auctions' total, else the last Auctionator scan's count
+-- (its highest that day) from its price database, or nil if unknown.
+function ns.Listed(itemID)
+  local rungs, first = Ladder(itemID)
+  if rungs then
+    local count = 0
+    for i = first, #rungs, 2 do count = count + rungs[i + 1] end
+    return count
+  end
+  local ok, entry = pcall(function() return Auctionator.Database.db[tostring(itemID)] end)
+  if not (ok and type(entry) == "table" and type(entry.a) == "table") then return nil end
+  local day, count
+  for d, n in pairs(entry.a) do
+    local num = tonumber(d)
+    if num and (not day or num > day) then day, count = num, n end
+  end
+  return count
+end
+
 -- Cheapest way to get `count` of an item: buy it, or make it with a known recipe. Unlike
 -- ReagentPrice's per-item price, this counts whole crafts: 3 Bronze Bars take 2 smelts (4 bars),
 -- which can cost more than buying 3. Returns { cost, buys = { { itemID, count, vendor }, ... },
@@ -319,10 +491,12 @@ end
 -- cost, and when made spellID, times (crafts) and children (the materials' nodes) }; cost is nil when a price is missing, and then crafting
 -- is only chosen over an unpriced purchase. seconds is the casting it takes (nil if a cast time is
 -- unknown), plus SWITCH_SECONDS per recipe; with `lambda` > 0 (copper per second) the time counts
--- as cost when choosing, as in ReagentPrice.
+-- as cost when choosing, as in ReagentPrice. Auction buys cost AuctionCost after `used` (item ID ->
+-- count already bought for the batch), which the chosen plan's buys are added to.
 local SWITCH_SECONDS = 5 -- picking a recipe and starting its queue; queued casts follow each other
-local function Plan(itemID, count, visiting, lambda)
+local function Plan(itemID, count, visiting, lambda, used)
   local price, source = BuyPrice(itemID)
+  if source == "auction" and price then price = AuctionCost(itemID, used[itemID] or 0, count) / count end
   local best = { cost = price and price * count, casts = {}, seconds = 0,
     buys = { { itemID = itemID, count = count, vendor = source == "vendor" } } }
   best.node = { itemID = itemID, count = count, cost = best.cost }
@@ -332,12 +506,13 @@ local function Plan(itemID, count, visiting, lambda)
     visiting[itemID] = true
     for _, spellID in ipairs(makers) do
       if ns.IsKnown(spellID) then
-        local recipe, buys = ns.Recipes[spellID], {}
+        local recipe, buys, before = ns.Recipes[spellID], {}, {}
+        for id, n in pairs(used) do before[id] = n end
         local times, cost = math.ceil(count / recipe.m[2]), 0
         local casts, cast, children = { [spellID] = times }, CastSeconds(spellID), {}
         local seconds = cast and cast * times + SWITCH_SECONDS
         for i = 1, #recipe.r, 2 do
-          local sub = Plan(recipe.r[i], recipe.r[i + 1] * times, visiting, lambda)
+          local sub = Plan(recipe.r[i], recipe.r[i + 1] * times, visiting, lambda, used)
           cost = cost and sub.cost and cost + sub.cost
           seconds = seconds and sub.seconds and seconds + sub.seconds
           for _, b in ipairs(sub.buys) do table.insert(buys, b) end
@@ -349,25 +524,13 @@ local function Plan(itemID, count, visiting, lambda)
           best, bestScore = { cost = cost, buys = buys, casts = casts, seconds = seconds,
             node = { itemID = itemID, count = count, cost = cost, spellID = spellID, times = times, children = children } }, score
         end
+        for id in pairs(used) do used[id] = before[id] end -- undo this option's buys
       end
     end
     visiting[itemID] = nil
   end
+  for _, b in ipairs(best.buys) do used[b.itemID] = (used[b.itemID] or 0) + b.count end
   return best
-end
-
--- How many of an item the last Auctionator scan saw listed (its highest count that day), or nil if
--- unknown. Auctionator keeps only the lowest price, so this says nothing about the price of the rest.
--- Reads Auctionator's price database, which isn't part of its API.
-function ns.Listed(itemID)
-  local ok, entry = pcall(function() return Auctionator.Database.db[tostring(itemID)] end)
-  if not (ok and type(entry) == "table" and type(entry.a) == "table") then return nil end
-  local day, count
-  for d, n in pairs(entry.a) do
-    local num = tonumber(d)
-    if num and (not day or num > day) then day, count = num, n end
-  end
-  return count
 end
 
 -- `crafts` crafts of a recipe made as one batch, making materials where that's cheaper for the
@@ -379,9 +542,9 @@ end
 -- cast time is missing.
 local function BuildBatch(spellID, crafts, lambda)
   local recipe, cost, casts = ns.Recipes[spellID], 0, { [spellID] = crafts }
-  local byItem, auction, vendor, short, nodes = {}, {}, {}, {}, {}
+  local byItem, auction, vendor, short, nodes, used = {}, {}, {}, {}, {}, {}
   for i = 1, #recipe.r, 2 do
-    local plan = Plan(recipe.r[i], recipe.r[i + 1] * crafts, {}, lambda)
+    local plan = Plan(recipe.r[i], recipe.r[i + 1] * crafts, {}, lambda, used)
     table.insert(nodes, plan.node)
     cost = cost and plan.cost and cost + plan.cost
     for id, n in pairs(plan.casts) do casts[id] = (casts[id] or 0) + n end
@@ -766,6 +929,20 @@ function ns.BreakdownLines(spellID, sellTo, crafts)
       or batch.seconds and "no price" or "unknown (the game gave no cast time)")
     add("|cffa0a0a0Cast times of the recipe and the materials you make, plus %d s per recipe used. " ..
       "Buying and selling take extra.|r", SWITCH_SECONDS)
+    -- Which auction materials are priced from all their auctions (Ladder) and which only from the lowest.
+    local seen, unseen = {}, {}
+    for _, m in ipairs(batch.auction) do
+      local rungs = Ladder(m.itemID)
+      if rungs then table.insert(seen, rungs.t or 0) else table.insert(unseen, ItemName(m.itemID)) end
+    end
+    if #seen > 0 then
+      add("|cffa0a0a0Auction materials bought cheapest first from the auctions seen %d min ago or later.|r",
+        math.floor((time() - math.min(unpack(seen))) / 60))
+    end
+    if #unseen > 0 then
+      add("|cffa0a0a0Only the lowest price known for %s: select it in Auctionator's search results, or do a " ..
+        "full scan with \"alternate slower scan mode\" on, to price every auction.|r", table.concat(unseen, ", "))
+    end
     for _, line in ipairs(ns.ShortLines(batch.short)) do add("%s", line) end
     if e.disenchant then
       add(" ")
@@ -864,6 +1041,10 @@ local API_FEATURES = {
   { "Cast times (gold per hour)", { "C_Spell", "C_Spell.GetSpellInfo" }, { "GetSpellInfo", "GetSpellInfo" },
     optional = true },
   { "Listed quantities", { "Auctionator price database", "Auctionator.Database.db" }, optional = true },
+  { "Market depth (full scans)", { "Auctionator scan event", "Auctionator.EventBus.Register",
+    "Auctionator.FullScan.Events.ScanComplete" }, optional = true },
+  { "Market depth (item searches)", { "C_AuctionHouse", "C_AuctionHouse.GetNumCommoditySearchResults",
+    "C_AuctionHouse.GetCommoditySearchResultInfo", "C_AuctionHouse.HasFullCommoditySearchResults" }, optional = true },
   { "Item tooltip", { "tooltip data", "TooltipDataProcessor.AddTooltipPostCall", "Enum.TooltipDataType" },
     { "OnTooltipSetItem", "GameTooltip.HookScript", "GameTooltip.GetItem" } },
   { "Addon version", { "C_AddOns", "C_AddOns.GetAddOnMetadata" }, { "GetAddOnMetadata", "GetAddOnMetadata" },
@@ -987,4 +1168,5 @@ frame:SetScript("OnEvent", function(_, event, itemID)
   if Auctionator.API.v1.RegisterForDBUpdate then
     Auctionator.API.v1.RegisterForDBUpdate(addonName, function() ns.Refresh() end)
   end
+  ns.WatchMarket()
 end)
