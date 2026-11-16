@@ -17,6 +17,9 @@ local FILTERS = {
 local DEFAULT_FILTER = 2 -- Known only
 -- Where crafted items are sold, for revenue and profit (see ns.Evaluate).
 local SELL_TO = { { "auction", "Sell: AH" }, { "vendor", "Sell: Vendor" }, { "highest", "Sell: Highest" } }
+-- Materials you can make (ns.CraftMode): made when cheaper, made when that gives more gold per
+-- hour, or always bought.
+local CRAFT_MODES = { { "cheapest", "Craft: cheapest" }, { "goldh", "Craft: best gold/h" }, { "buy", "Craft: never" } }
 local RevenueText -- defined below; needs state
 local PerHourText -- defined below; needs Money
 -- key, title, width, justify, title in "Disenchant from AH" ("" hides the column). fit: shrink to
@@ -205,8 +208,10 @@ function Update()
   window.sellDropdown:Refresh(SellLabel())
   window.sellDropdown:SetShown(not deMode)
   window.crafts:SetShown(not deMode) -- the batch size only applies to recipes
-  window.craftMaterials:SetShown(not deMode)
-  window.craftMaterials:SetChecked(ns.CraftMaterials())
+  window.craftDropdown:SetShown(not deMode)
+  for _, mode in ipairs(CRAFT_MODES) do
+    if mode[1] == ns.CraftMode() then window.craftDropdown:Refresh(mode[2]) end
+  end
   for _, header in ipairs(window.headers) do header:SetText(deMode and header.col[5] or header.col[2]) end
 
   local list, tooHigh
@@ -358,26 +363,13 @@ local function CreateWindow()
   searchLabel:SetPoint("BOTTOMLEFT", search, "TOPLEFT", 0, 1)
   searchLabel:SetText("Search")
 
-  -- "Craft materials" (ns.CraftMaterials): off prices every material as bought, everywhere.
-  local craftMaterials = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-  craftMaterials:SetSize(24, 24)
-  craftMaterials:SetPoint("LEFT", search, "RIGHT", 12, 0)
-  local craftLabel = craftMaterials:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  craftLabel:SetPoint("LEFT", craftMaterials, "RIGHT", 2, 0)
-  craftLabel:SetText("Craft materials")
-  craftMaterials:SetScript("OnClick", function(self)
-    if self:GetChecked() then ProfitDB.craftMaterials = nil else ProfitDB.craftMaterials = false end
-    Update()
-  end)
-  craftMaterials:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Make the materials you know how to make when that's cheaper than buying them " ..
-      "(e.g. bars from ore). Off: every material is bought, for the costs, Gold/h and the shopping list.",
-      nil, nil, nil, nil, true)
-    GameTooltip:Show()
-  end)
-  craftMaterials:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  f.craftMaterials = craftMaterials
+  -- How materials you can make are handled (ns.CraftMode), for every cost, Gold/h and the list.
+  f.craftDropdown = CreateDropdown(f, "ProfitCraftDropdown", 170, function() return CRAFT_MODES end,
+    function() return ns.CraftMode() end, function(value)
+      ProfitDB.craftMode, ProfitDB.craftMaterials = value, nil
+      Update()
+    end)
+  f.craftDropdown:SetPoint("LEFT", search, "RIGHT", 12 - f.craftDropdown.inset, 0)
 
   -- Column headers; click to sort, click again to reverse. Headers are left-aligned (a right-aligned
   -- first header would run into the next one); Update() sets their titles.
@@ -553,7 +545,8 @@ local function CreateWindow()
   shopping:SetScript("OnClick", function()
     crafts:ClearFocus()
     Commit()
-    local ok, err = pcall(ns.CreateShoppingList, state.selected, state.crafts)
+    local e = ns.Evaluate(state.selected, state.sellTo)
+    local ok, err = pcall(ns.CreateShoppingList, state.selected, state.crafts, e and e.revenue)
     if not ok then print("|cffffd100Profit:|r couldn't create the shopping list: " .. tostring(err)) end
   end)
   local function Tip(frame, text)

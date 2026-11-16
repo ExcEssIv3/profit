@@ -96,10 +96,20 @@ local function BuyPrice(itemID)
   return AuctionPrice(itemID), "auction"
 end
 
--- Whether materials the character can make are priced (and planned) as crafted when that's cheaper.
--- The window's "Craft materials" checkbox turns it off to price everything as bought; saved as
--- ProfitDB.craftMaterials = false (on by default, like ProfitDB.tooltip).
-function ns.CraftMaterials() return not (ProfitDB and ProfitDB.craftMaterials == false) end
+-- How materials the character can make are handled (the window's materials dropdown), saved as
+-- ProfitDB.craftMode: "buy" (always bought), "cheapest" (made when that costs less, the default) or
+-- "goldh" (made when that gives more gold per hour of crafting, see ns.Evaluate and ns.Batch).
+-- ProfitDB.craftMaterials = false, from an earlier checkbox, counts as "buy".
+local CRAFT_MODES = { buy = true, cheapest = true, goldh = true }
+function ns.CraftMode()
+  local mode = ProfitDB and ProfitDB.craftMode
+  if CRAFT_MODES[mode] then return mode end
+  if ProfitDB and ProfitDB.craftMaterials == false then return "buy" end
+  return "cheapest"
+end
+
+-- Whether materials the character can make may be made at all (any mode but "buy").
+function ns.CraftMaterials() return ns.CraftMode() ~= "buy" end
 
 -- Item ID -> spell IDs of the recipes that make it.
 local MadeBy = {}
@@ -110,35 +120,58 @@ for spellID, recipe in pairs(ns.Recipes) do
   end
 end
 
+-- A recipe's cast time in seconds, from the game's spell data; nil if the game doesn't say.
+local castSeconds = {}
+local function CastSeconds(spellID)
+  if castSeconds[spellID] == nil then
+    local ms
+    if C_Spell and C_Spell.GetSpellInfo then
+      local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+      ms = ok and info and info.castTime
+    elseif GetSpellInfo then
+      local ok, _, _, _, castTime = pcall(GetSpellInfo, spellID)
+      ms = ok and castTime
+    end
+    if not ms then return nil end
+    castSeconds[spellID] = ms / 1000
+  end
+  return castSeconds[spellID]
+end
+
 -- A material costs its buy price, or its crafting cost when the character knows a recipe for it
 -- and that's cheaper (e.g. Bolt of Woolen Cloth from Wool Cloth), down any chain of crafts.
--- Returns price, "vendor" | "auction" | "crafted", and for "crafted" the recipe's spell ID.
+-- Returns price, "vendor" | "auction" | "crafted", for "crafted" the recipe's spell ID, and the
+-- seconds of casting it takes per item (0 when bought; nil when a cast time is unknown).
 -- `visiting` holds the items being priced further up, so recipe loops (essence conversions) end.
+-- `lambda` (copper per second, default 0) also charges for crafting time: making a material wins
+-- when its cost plus lambda times its casting time is below the buy price ("goldh" mode).
 local ReagentPrice
-local function CraftCost(spellID, visiting) -- per item made
-  local recipe, cost = ns.Recipes[spellID], 0
+local function CraftCost(spellID, visiting, lambda) -- cost and seconds per item made
+  local recipe, cost, seconds = ns.Recipes[spellID], 0, CastSeconds(spellID)
   for i = 1, #recipe.r, 2 do
-    local price = ReagentPrice(recipe.r[i], visiting)
+    local price, _, _, secs = ReagentPrice(recipe.r[i], visiting, lambda)
     if not price then return nil end
     cost = cost + price * recipe.r[i + 1]
+    seconds = seconds and secs and seconds + secs * recipe.r[i + 1]
   end
-  return cost / recipe.m[2]
+  return cost / recipe.m[2], seconds and seconds / recipe.m[2]
 end
-function ReagentPrice(itemID, visiting)
+function ReagentPrice(itemID, visiting, lambda)
   local price, source = BuyPrice(itemID)
-  local makers, craftedBy = MadeBy[itemID]
+  local makers, craftedBy, seconds = MadeBy[itemID], nil, 0
   if makers and ns.CraftMaterials() and not (visiting and visiting[itemID]) then
     visiting = visiting or {}
     visiting[itemID] = true
     for _, spellID in ipairs(makers) do
       if ns.IsKnown(spellID) then
-        local cost = CraftCost(spellID, visiting)
-        if cost and (not price or cost < price) then price, source, craftedBy = cost, "crafted", spellID end
+        local cost, secs = CraftCost(spellID, visiting, lambda)
+        local score = cost and cost + ((lambda or 0) > 0 and secs and lambda * secs or 0)
+        if cost and (not price or score < price) then price, source, craftedBy, seconds = cost, "crafted", spellID, secs end
       end
     end
     visiting[itemID] = nil
   end
-  return price, source, craftedBy
+  return price, source, craftedBy, seconds
 end
 
 -- Lowest skill the recipe can be learned at, or nil if no trainer visit has recorded it.
@@ -216,22 +249,29 @@ end
 function ns.Evaluate(spellID, sellTo)
   local recipe = ns.Recipes[spellID]
   if not recipe then return nil end
-  local result = { spellID = spellID, recipe = recipe, missing = {}, reagents = {} }
+  local result = { spellID = spellID, recipe = recipe, missing = {}, reagents = {}, lambda = 0 }
 
-  local cost = 0
-  for i = 1, #recipe.r, 2 do
-    local itemID, count = recipe.r[i], recipe.r[i + 1]
-    local price, priceSource, craftedBy = ReagentPrice(itemID)
-    table.insert(result.reagents,
-      { itemID = itemID, count = count, price = price, priceSource = priceSource, craftedBy = craftedBy })
-    if not price then
-      table.insert(result.missing, itemID)
-    elseif cost then
-      cost = cost + price * count
+  -- The materials at `lambda` (see ReagentPrice): their list, total cost (nil if a price is missing),
+  -- the seconds one craft takes, and the item IDs without a price.
+  local function Materials(lambda)
+    local reagents, missing, cost, seconds = {}, {}, 0, CastSeconds(spellID)
+    for i = 1, #recipe.r, 2 do
+      local itemID, count = recipe.r[i], recipe.r[i + 1]
+      local price, priceSource, craftedBy, secs = ReagentPrice(itemID, nil, lambda)
+      table.insert(reagents,
+        { itemID = itemID, count = count, price = price, priceSource = priceSource, craftedBy = craftedBy })
+      if not price then
+        table.insert(missing, itemID)
+      else
+        cost = cost + price * count
+      end
+      seconds = seconds and secs and seconds + secs * count
     end
+    return reagents, #missing == 0 and cost or nil, seconds, missing
   end
-  if #result.missing > 0 then cost = nil end
-  result.cost = cost
+  local reagents, cost, seconds, missing = Materials(0)
+  result.reagents, result.cost = reagents, cost
+  for _, itemID in ipairs(missing) do table.insert(result.missing, itemID) end
 
   if recipe.m then
     local itemID, count = recipe.m[1], recipe.m[2]
@@ -254,6 +294,19 @@ function ns.Evaluate(spellID, sellTo)
     elseif sellTo ~= "highest" or not vendor then
       table.insert(result.missing, itemID)
     end
+    -- "goldh": find the materials that give the most profit per second (Dinkelbach's method):
+    -- charge crafting time at the current rate, re-pick, and repeat while the rate improves.
+    if ns.CraftMode() == "goldh" and result.revenue and cost and seconds and seconds > 0 then
+      local rate = (result.revenue - cost) / seconds
+      for _ = 1, 5 do
+        if rate <= 0 then break end
+        local r2, c2, s2 = Materials(rate)
+        if not (c2 and s2 and s2 > 0) then break end
+        local rate2 = (result.revenue - c2) / s2
+        if rate2 <= rate + 1e-9 then break end
+        result.reagents, result.cost, result.lambda, rate = r2, c2, rate, rate2
+      end
+    end
     if result.revenue and result.cost then
       result.profit = result.revenue - result.cost
     end
@@ -271,12 +324,16 @@ end
 -- Cheapest way to get `count` of an item: buy it, or make it with a known recipe. Unlike
 -- ReagentPrice's per-item price, this counts whole crafts: 3 Bronze Bars take 2 smelts (4 bars),
 -- which can cost more than buying 3. Returns { cost, buys = { { itemID, count, vendor }, ... },
--- casts = { [spellID] = crafts } }; cost is nil when a price is missing, and then crafting is only
--- chosen over an unpriced purchase.
-local function Plan(itemID, count, visiting)
+-- casts = { [spellID] = crafts }, seconds }; cost is nil when a price is missing, and then crafting
+-- is only chosen over an unpriced purchase. seconds is the casting it takes (nil if a cast time is
+-- unknown), plus SWITCH_SECONDS per recipe; with `lambda` > 0 (copper per second) the time counts
+-- as cost when choosing, as in ReagentPrice.
+local SWITCH_SECONDS = 5 -- picking a recipe and starting its queue; queued casts follow each other
+local function Plan(itemID, count, visiting, lambda)
   local price, source = BuyPrice(itemID)
-  local best = { cost = price and price * count, casts = {},
+  local best = { cost = price and price * count, casts = {}, seconds = 0,
     buys = { { itemID = itemID, count = count, vendor = source == "vendor" } } }
+  local bestScore = best.cost
   local makers = MadeBy[itemID]
   if makers and ns.CraftMaterials() and not visiting[itemID] then
     visiting[itemID] = true
@@ -284,41 +341,25 @@ local function Plan(itemID, count, visiting)
       if ns.IsKnown(spellID) then
         local recipe, buys = ns.Recipes[spellID], {}
         local times, cost = math.ceil(count / recipe.m[2]), 0
-        local casts = { [spellID] = times }
+        local casts, cast = { [spellID] = times }, CastSeconds(spellID)
+        local seconds = cast and cast * times + SWITCH_SECONDS
         for i = 1, #recipe.r, 2 do
-          local sub = Plan(recipe.r[i], recipe.r[i + 1] * times, visiting)
+          local sub = Plan(recipe.r[i], recipe.r[i + 1] * times, visiting, lambda)
           cost = cost and sub.cost and cost + sub.cost
+          seconds = seconds and sub.seconds and seconds + sub.seconds
           for _, b in ipairs(sub.buys) do table.insert(buys, b) end
           for id, n in pairs(sub.casts) do casts[id] = (casts[id] or 0) + n end
         end
-        if cost and (not best.cost or cost < best.cost) then best = { cost = cost, buys = buys, casts = casts } end
+        local score = cost and cost + ((lambda or 0) > 0 and seconds and lambda * seconds or 0)
+        if cost and (not bestScore or score < bestScore) then
+          best, bestScore = { cost = cost, buys = buys, casts = casts, seconds = seconds }, score
+        end
       end
     end
     visiting[itemID] = nil
   end
   return best
 end
-
--- A recipe's cast time in seconds, from the game's spell data; nil if the game doesn't say.
-local castSeconds = {}
-local function CastSeconds(spellID)
-  if castSeconds[spellID] == nil then
-    local ms
-    if C_Spell and C_Spell.GetSpellInfo then
-      local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
-      ms = ok and info and info.castTime
-    elseif GetSpellInfo then
-      local ok, _, _, _, castTime = pcall(GetSpellInfo, spellID)
-      ms = ok and castTime
-    end
-    if not ms then return nil end
-    castSeconds[spellID] = ms / 1000
-  end
-  return castSeconds[spellID]
-end
-
--- Picking a recipe and starting its queue; casts in a queue follow each other with no gap.
-local SWITCH_SECONDS = 5
 
 -- How many of an item the last Auctionator scan saw listed (its highest count that day), or nil if
 -- unknown. Auctionator keeps only the lowest price, so this says nothing about the price of the rest.
@@ -335,16 +376,17 @@ function ns.Listed(itemID)
 end
 
 -- `crafts` crafts of a recipe made as one batch, making materials where that's cheaper for the
--- amount needed (see Plan): { cost, seconds, auction, vendor, short }. auction and vendor list
+-- amount needed (see Plan), or in "goldh" mode where that gives more gold per hour for the batch,
+-- given what one craft sells for (`revenue`): { cost, seconds, auction, vendor, short }. auction and vendor list
 -- { itemID, count } to buy, in the order first needed; short lists auction materials needing more
 -- than were listed, as { itemID, count, listed }. seconds counts every cast (the recipe's and the
 -- materials') plus SWITCH_SECONDS for each recipe used. cost or seconds is nil when a price or a
 -- cast time is missing.
-function ns.Batch(spellID, crafts)
+local function BuildBatch(spellID, crafts, lambda)
   local recipe, cost, casts = ns.Recipes[spellID], 0, { [spellID] = crafts }
   local byItem, auction, vendor, short = {}, {}, {}, {}
   for i = 1, #recipe.r, 2 do
-    local plan = Plan(recipe.r[i], recipe.r[i + 1] * crafts, {})
+    local plan = Plan(recipe.r[i], recipe.r[i + 1] * crafts, {}, lambda)
     cost = cost and plan.cost and cost + plan.cost
     for id, n in pairs(plan.casts) do casts[id] = (casts[id] or 0) + n end
     for _, b in ipairs(plan.buys) do
@@ -368,18 +410,34 @@ function ns.Batch(spellID, crafts)
   end
   return { cost = cost, seconds = seconds, auction = auction, vendor = vendor, short = short }
 end
+function ns.Batch(spellID, crafts, revenue)
+  local batch = BuildBatch(spellID, crafts, 0)
+  -- "goldh": as in ns.Evaluate, charge time at the batch's rate and re-plan while the rate improves.
+  if ns.CraftMode() == "goldh" and revenue and batch.cost and batch.seconds and batch.seconds > 0 then
+    local rate = (revenue * crafts - batch.cost) / batch.seconds
+    for _ = 1, 5 do
+      if rate <= 0 then break end
+      local nextBatch = BuildBatch(spellID, crafts, rate)
+      if not (nextBatch.cost and nextBatch.seconds and nextBatch.seconds > 0) then break end
+      local nextRate = (revenue * crafts - nextBatch.cost) / nextBatch.seconds
+      if nextRate <= rate + 1e-9 then break end
+      batch, rate = nextBatch, nextRate
+    end
+  end
+  return batch
+end
 
 -- Profit per hour of crafting for a batch of `crafts` (see ns.Batch), given what one craft sells
 -- for. nil when the revenue, a price or a cast time is missing.
 function ns.PerHour(spellID, crafts, revenue)
-  local batch = ns.Batch(spellID, crafts)
+  local batch = ns.Batch(spellID, crafts, revenue)
   if not (revenue and batch.cost and batch.seconds and batch.seconds > 0) then return nil, batch end
   return (revenue * crafts - batch.cost) * 3600 / batch.seconds, batch
 end
 
 -- What to buy for `crafts` crafts of a recipe: the auction house and vendor lists of ns.Batch.
-function ns.Materials(spellID, crafts)
-  local batch = ns.Batch(spellID, crafts)
+function ns.Materials(spellID, crafts, revenue)
+  local batch = ns.Batch(spellID, crafts, revenue)
   return batch.auction, batch.vendor
 end
 
@@ -394,11 +452,11 @@ function ns.ShortLines(short)
 end
 
 -- Replaces the Auctionator shopping list "Profit: <recipe>" with the auction house materials for
--- `crafts` crafts (see ns.Batch), and says in chat what to buy from vendors. The crafted item
+-- `crafts` crafts (see ns.Batch; `revenue` as there), and says in chat what to buy from vendors. The crafted item
 -- goes last with no quantity: searching the list then refreshes its price too, since Auctionator
 -- saves what its searches find.
-function ns.CreateShoppingList(spellID, crafts)
-  local batch = ns.Batch(spellID, crafts)
+function ns.CreateShoppingList(spellID, crafts, revenue)
+  local batch = ns.Batch(spellID, crafts, revenue)
   local auction, vendor = batch.auction, batch.vendor
   local recipe = ns.Recipes[spellID]
   local name = "Profit: " .. recipe.n
@@ -653,13 +711,13 @@ function ns.BreakdownLines(spellID, sellTo, crafts)
   add(" ")
   -- What a material priced at its crafting cost is made from, down the chain, with the same choices
   -- and prices as the cost, e.g. "    from 9x Wool Cloth: 1s 80c (20c each)". `visiting` as in
-  -- ReagentPrice: the materials being made further up.
+  -- ReagentPrice: the materials being made further up; e.lambda repeats the "goldh" choice.
   local function AddMadeFrom(itemID, count, spellID, depth, visiting)
     local sub = ns.Recipes[spellID]
     visiting[itemID] = true
     for i = 1, #sub.r, 2 do
       local subID, subCount = sub.r[i], sub.r[i + 1] * count / sub.m[2]
-      local price, source, craftedBy = ReagentPrice(subID, visiting)
+      local price, source, craftedBy = ReagentPrice(subID, visiting, e.lambda)
       add("|cffa0a0a0%sfrom %gx %s: %s%s%s|r", string.rep("    ", depth), subCount, ItemName(subID),
         price and FormatMoney(price * subCount) or "no price",
         price and string.format(" (%s each)", FormatMoney(price)) or "",
