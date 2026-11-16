@@ -52,9 +52,10 @@ In game, after an Auctionator scan:
   The **Craft** dropdown next to the search box (saved as `ProfitDB.craftMode`) picks how
   materials you can make are handled, for Cost, Profit, Gold/h, the details and the shopping list:
   *cheapest* (the default) makes them when that costs less; *best gold/h* makes them only when that
-  gives more gold per hour of crafting, charging the time they take at the recipe's own rate and
-  re-picking until the rate stops improving (Dinkelbach's method); *never* buys everything. With a
-  recipe that loses money, *best gold/h* picks like *cheapest*.
+  gives more gold per hour for the batch in the box, charging the time they take at the batch's own
+  rate and re-picking until the rate stops improving (Dinkelbach's method), and then Cost, Profit and
+  the details are that batch's averages per craft, so they agree with Gold/h; *never* buys
+  everything. With a recipe that loses money, *best gold/h* picks like *cheapest*.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
   and for green or better gear what it disenchants into and the disenchant profit
