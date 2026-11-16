@@ -48,6 +48,9 @@ In game, after an Auctionator scan:
   plus 5 s for each recipe used (queued casts follow each other; switching recipe doesn't). Cast
   times come from the game's spell data. A red "!" means the last scan listed fewer of a material
   than the batch needs; Auctionator keeps only the lowest price, so the rest may cost more.
+  **Craft materials** (next to the search box, on by default, saved as `ProfitDB.craftMaterials`)
+  turns making materials off: every material is then priced and listed as bought, for Cost, Profit,
+  Gold/h, the details and the shopping list.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
   and for green or better gear what it disenchants into and the disenchant profit

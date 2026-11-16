@@ -205,6 +205,8 @@ function Update()
   window.sellDropdown:Refresh(SellLabel())
   window.sellDropdown:SetShown(not deMode)
   window.crafts:SetShown(not deMode) -- the batch size only applies to recipes
+  window.craftMaterials:SetShown(not deMode)
+  window.craftMaterials:SetChecked(ns.CraftMaterials())
   for _, header in ipairs(window.headers) do header:SetText(deMode and header.col[5] or header.col[2]) end
 
   local list, tooHigh
@@ -355,6 +357,27 @@ local function CreateWindow()
   local searchLabel = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   searchLabel:SetPoint("BOTTOMLEFT", search, "TOPLEFT", 0, 1)
   searchLabel:SetText("Search")
+
+  -- "Craft materials" (ns.CraftMaterials): off prices every material as bought, everywhere.
+  local craftMaterials = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+  craftMaterials:SetSize(24, 24)
+  craftMaterials:SetPoint("LEFT", search, "RIGHT", 12, 0)
+  local craftLabel = craftMaterials:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  craftLabel:SetPoint("LEFT", craftMaterials, "RIGHT", 2, 0)
+  craftLabel:SetText("Craft materials")
+  craftMaterials:SetScript("OnClick", function(self)
+    if self:GetChecked() then ProfitDB.craftMaterials = nil else ProfitDB.craftMaterials = false end
+    Update()
+  end)
+  craftMaterials:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Make the materials you know how to make when that's cheaper than buying them " ..
+      "(e.g. bars from ore). Off: every material is bought, for the costs, Gold/h and the shopping list.",
+      nil, nil, nil, nil, true)
+    GameTooltip:Show()
+  end)
+  craftMaterials:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  f.craftMaterials = craftMaterials
 
   -- Column headers; click to sort, click again to reverse. Headers are left-aligned (a right-aligned
   -- first header would run into the next one); Update() sets their titles.

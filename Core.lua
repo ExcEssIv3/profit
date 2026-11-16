@@ -96,6 +96,11 @@ local function BuyPrice(itemID)
   return AuctionPrice(itemID), "auction"
 end
 
+-- Whether materials the character can make are priced (and planned) as crafted when that's cheaper.
+-- The window's "Craft materials" checkbox turns it off to price everything as bought; saved as
+-- ProfitDB.craftMaterials = false (on by default, like ProfitDB.tooltip).
+function ns.CraftMaterials() return not (ProfitDB and ProfitDB.craftMaterials == false) end
+
 -- Item ID -> spell IDs of the recipes that make it.
 local MadeBy = {}
 for spellID, recipe in pairs(ns.Recipes) do
@@ -122,7 +127,7 @@ end
 function ReagentPrice(itemID, visiting)
   local price, source = BuyPrice(itemID)
   local makers, craftedBy = MadeBy[itemID]
-  if makers and not (visiting and visiting[itemID]) then
+  if makers and ns.CraftMaterials() and not (visiting and visiting[itemID]) then
     visiting = visiting or {}
     visiting[itemID] = true
     for _, spellID in ipairs(makers) do
@@ -273,7 +278,7 @@ local function Plan(itemID, count, visiting)
   local best = { cost = price and price * count, casts = {},
     buys = { { itemID = itemID, count = count, vendor = source == "vendor" } } }
   local makers = MadeBy[itemID]
-  if makers and not visiting[itemID] then
+  if makers and ns.CraftMaterials() and not visiting[itemID] then
     visiting[itemID] = true
     for _, spellID in ipairs(makers) do
       if ns.IsKnown(spellID) then
