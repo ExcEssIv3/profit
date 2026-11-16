@@ -42,7 +42,8 @@ In game, after an Auctionator scan:
   auction house materials for the number of crafts in the box beside it. A material you can make
   is broken down into its own materials when making that many costs less than buying them, counting
   whole crafts (3 Bronze Bars take 2 smelts, so buying them can be cheaper); vendor materials are
-  printed in chat.
+  printed in chat. The crafted item is added last, with no quantity, so searching the list also
+  refreshes its price.
   The same box sets the batch for the **Gold/h** column: the profit of that many crafts divided by
   the time they take, i.e. the cast times of the recipe and of the materials made along the way,
   plus 5 s for each recipe used (queued casts follow each other; switching recipe doesn't). Cast
