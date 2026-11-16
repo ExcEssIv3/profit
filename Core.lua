@@ -311,26 +311,36 @@ function ns.Materials(spellID, crafts)
 end
 
 -- Replaces the Auctionator shopping list "Profit: <recipe>" with the auction house materials for
--- `crafts` crafts (see ns.Materials), and says in chat what to buy from vendors.
+-- `crafts` crafts (see ns.Materials), and says in chat what to buy from vendors. The crafted item
+-- goes last with no quantity: searching the list then refreshes its price too, since Auctionator
+-- saves what its searches find.
 function ns.CreateShoppingList(spellID, crafts)
   local auction, vendor = ns.Materials(spellID, crafts)
-  local name = "Profit: " .. ns.Recipes[spellID].n
+  local recipe = ns.Recipes[spellID]
+  local name = "Profit: " .. recipe.n
   local function Names(list)
     local parts = {}
     for _, m in ipairs(list) do table.insert(parts, m.count .. "x " .. ns.ItemName(m.itemID)) end
     return table.concat(parts, ", ")
   end
+  local terms = {}
+  for _, m in ipairs(auction) do
+    table.insert(terms, Auctionator.API.v1.ConvertToSearchString(addonName,
+      { searchString = ns.ItemName(m.itemID), isExact = true, quantity = m.count }))
+  end
+  if recipe.m then
+    table.insert(terms, Auctionator.API.v1.ConvertToSearchString(addonName,
+      { searchString = ns.ItemName(recipe.m[1]), isExact = true }))
+  end
+  if #terms > 0 then Auctionator.API.v1.CreateShoppingList(addonName, name, terms) end
   if #auction > 0 then
-    local terms = {}
-    for _, m in ipairs(auction) do
-      table.insert(terms, Auctionator.API.v1.ConvertToSearchString(addonName,
-        { searchString = ns.ItemName(m.itemID), isExact = true, quantity = m.count }))
-    end
-    Auctionator.API.v1.CreateShoppingList(addonName, name, terms)
     print(string.format("|cffffd100Profit:|r Auctionator list \"%s\" for %d craft%s: %s", name, crafts,
       crafts == 1 and "" or "s", Names(auction)))
   else
-    print(string.format("|cffffd100Profit:|r %s needs nothing from the auction house.", ns.Recipes[spellID].n))
+    print(string.format("|cffffd100Profit:|r %s needs nothing from the auction house.", recipe.n))
+  end
+  if recipe.m then
+    print(string.format("|cffffd100Profit:|r The list also searches %s, to refresh its price.", ns.ItemName(recipe.m[1])))
   end
   if #vendor > 0 then print("|cffffd100Profit:|r From vendors: " .. Names(vendor)) end
 end
