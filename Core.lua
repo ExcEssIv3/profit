@@ -263,6 +263,78 @@ function ns.Evaluate(spellID, sellTo)
   return result
 end
 
+-- Cheapest way to get `count` of an item: buy it, or make it with a known recipe. Unlike
+-- ReagentPrice's per-item price, this counts whole crafts: 3 Bronze Bars take 2 smelts (4 bars),
+-- which can cost more than buying 3. Returns { cost, buys = { { itemID, count, vendor }, ... } };
+-- cost is nil when a price is missing, and then crafting is only chosen over an unpriced purchase.
+local function Plan(itemID, count, visiting)
+  local price, source = BuyPrice(itemID)
+  local best = { cost = price and price * count, buys = { { itemID = itemID, count = count, vendor = source == "vendor" } } }
+  local makers = MadeBy[itemID]
+  if makers and not visiting[itemID] then
+    visiting[itemID] = true
+    for _, spellID in ipairs(makers) do
+      if ns.IsKnown(spellID) then
+        local recipe, buys = ns.Recipes[spellID], {}
+        local times, cost = math.ceil(count / recipe.m[2]), 0
+        for i = 1, #recipe.r, 2 do
+          local sub = Plan(recipe.r[i], recipe.r[i + 1] * times, visiting)
+          cost = cost and sub.cost and cost + sub.cost
+          for _, b in ipairs(sub.buys) do table.insert(buys, b) end
+        end
+        if cost and (not best.cost or cost < best.cost) then best = { cost = cost, buys = buys } end
+      end
+    end
+    visiting[itemID] = nil
+  end
+  return best
+end
+
+-- What to buy for `crafts` crafts of a recipe, making materials yourself where that's cheaper for
+-- the amount needed (see Plan). Returns lists of { itemID, count } for the auction house and for
+-- vendors, in the order they're first needed.
+function ns.Materials(spellID, crafts)
+  local byItem, auction, vendor = {}, {}, {}
+  local recipe = ns.Recipes[spellID]
+  for i = 1, #recipe.r, 2 do
+    for _, b in ipairs(Plan(recipe.r[i], recipe.r[i + 1] * crafts, {}).buys) do
+      local entry = byItem[b.itemID]
+      if not entry then
+        entry = { itemID = b.itemID, count = 0 }
+        byItem[b.itemID] = entry
+        table.insert(b.vendor and vendor or auction, entry)
+      end
+      entry.count = entry.count + b.count
+    end
+  end
+  return auction, vendor
+end
+
+-- Replaces the Auctionator shopping list "Profit: <recipe>" with the auction house materials for
+-- `crafts` crafts (see ns.Materials), and says in chat what to buy from vendors.
+function ns.CreateShoppingList(spellID, crafts)
+  local auction, vendor = ns.Materials(spellID, crafts)
+  local name = "Profit: " .. ns.Recipes[spellID].n
+  local function Names(list)
+    local parts = {}
+    for _, m in ipairs(list) do table.insert(parts, m.count .. "x " .. ns.ItemName(m.itemID)) end
+    return table.concat(parts, ", ")
+  end
+  if #auction > 0 then
+    local terms = {}
+    for _, m in ipairs(auction) do
+      table.insert(terms, Auctionator.API.v1.ConvertToSearchString(addonName,
+        { searchString = ns.ItemName(m.itemID), isExact = true, quantity = m.count }))
+    end
+    Auctionator.API.v1.CreateShoppingList(addonName, name, terms)
+    print(string.format("|cffffd100Profit:|r Auctionator list \"%s\" for %d craft%s: %s", name, crafts,
+      crafts == 1 and "" or "s", Names(auction)))
+  else
+    print(string.format("|cffffd100Profit:|r %s needs nothing from the auction house.", ns.Recipes[spellID].n))
+  end
+  if #vendor > 0 then print("|cffffd100Profit:|r From vendors: " .. Names(vendor)) end
+end
+
 -- Skill color of a recipe at this character's current skill: "red" (can't learn yet), "orange",
 -- "yellow", "green", "grey", or nil when the skill or the recipe's ranges aren't known.
 ns.ColorCodes = { red = "ffff4040", orange = "ffff8040", yellow = "ffffff00", green = "ff40c040", grey = "ff808080" }
@@ -588,6 +660,8 @@ local API_FEATURES = {
   { "Disenchant (skip non-gear)", { "C_Item", "C_Item.GetItemInfoInstant" }, { "GetItemInfoInstant", "GetItemInfoInstant" },
     optional = true },
   { "Disenchant deals (AH search)", { "Auctionator", "Auctionator.API.v1.MultiSearchExact" }, optional = true },
+  { "Shopping lists", { "Auctionator", "Auctionator.API.v1.CreateShoppingList", "Auctionator.API.v1.ConvertToSearchString" },
+    optional = true },
   { "Item tooltip", { "tooltip data", "TooltipDataProcessor.AddTooltipPostCall", "Enum.TooltipDataType" },
     { "OnTooltipSetItem", "GameTooltip.HookScript", "GameTooltip.GetItem" } },
   { "Addon version", { "C_AddOns", "C_AddOns.GetAddOnMetadata" }, { "GetAddOnMetadata", "GetAddOnMetadata" },
