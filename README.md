@@ -38,6 +38,12 @@ In game, after an Auctionator scan:
   Enchanters also get **Disenchant from AH**: gear Auctionator has priced that's worth more
   disenchanted than it costs, leaving out items above your Enchanting skill. Clicking an item
   with the auction house open searches for it through Auctionator.
+  **Shopping list** in a recipe's details replaces the Auctionator list "Profit: <recipe>" with the
+  auction house materials for the number of crafts in the box beside it. A material you can make
+  is broken down into its own materials when making that many costs less than buying them, counting
+  whole crafts (3 Bronze Bars take 2 smelts, so buying them can be cheaper); vendor materials are
+  printed in chat. The crafted item is added last, with no quantity, so searching the list also
+  refreshes its price.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
   and for green or better gear what it disenchants into and the disenchant profit

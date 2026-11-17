@@ -103,6 +103,10 @@ local function ShowDetail(key)
   state.selected = key
   local itemID = type(key) == "string" and tonumber(key:match("^item:(%d+)"))
   window.favorite:SetShown(key ~= nil and not itemID)
+  local canList = key ~= nil and not itemID and Auctionator and Auctionator.API and Auctionator.API.v1
+    and Auctionator.API.v1.CreateShoppingList ~= nil
+  window.shopping:SetShown(canList)
+  window.crafts:SetShown(canList)
   if key and not itemID then
     window.favorite:SetText(ns.IsFavorite(key) and "Unfavorite" or "Favorite")
   end
@@ -489,6 +493,41 @@ local function CreateWindow()
     Update()
   end)
   f.favorite = favorite
+
+  -- Shopping list for this many crafts, with crafted materials broken down (ns.CreateShoppingList).
+  local shopping = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+  shopping:SetSize(100, 22)
+  shopping:SetPoint("LEFT", favorite, "RIGHT", 4, 0)
+  shopping:SetText("Shopping list")
+  local crafts = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+  crafts:SetSize(32, 20)
+  crafts:SetPoint("LEFT", shopping, "RIGHT", 10, 0) -- the template's border sits left of the box
+  crafts:SetAutoFocus(false)
+  crafts:SetNumeric(true)
+  crafts:SetMaxLetters(3)
+  crafts:SetText("1")
+  crafts:SetScript("OnEnterPressed", crafts.ClearFocus)
+  crafts:SetScript("OnEscapePressed", crafts.ClearFocus)
+  shopping:SetScript("OnClick", function()
+    crafts:ClearFocus()
+    local count = math.max(1, tonumber(crafts:GetText()) or 1)
+    crafts:SetText(count)
+    local ok, err = pcall(ns.CreateShoppingList, state.selected, count)
+    if not ok then print("|cffffd100Profit:|r couldn't create the shopping list: " .. tostring(err)) end
+  end)
+  local function Tip(frame, text)
+    frame:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText(text, nil, nil, nil, nil, true)
+      GameTooltip:Show()
+    end)
+    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  end
+  Tip(shopping, "Create an Auctionator shopping list with the materials for the number of crafts " ..
+    "on the right. Materials you can make are replaced by what they're made from when making that many " ..
+    "costs less than buying them.")
+  Tip(crafts, "Number of crafts")
+  f.shopping, f.crafts = shopping, crafts
 
   f.measure = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") -- for ColumnWidths
   f.measure:SetAlpha(0) -- invisible but laid out, so its width can be measured
