@@ -43,8 +43,9 @@ In game, after an Auctionator scan:
   and for green or better gear what it disenchants into and the disenchant profit
 - `/prof export`: a string of your trainer, merchant and disenchant recordings to copy and share
 - `/prof minimap`: show or hide the minimap button (click it to open the window, drag to move it)
-- `/prof tooltip`: show or hide the estimated disenchant value in item tooltips (on by default;
-  hold Shift for the materials and their chances)
+- `/prof tooltip`: show or hide the estimated disenchant value and craft cost in item tooltips (on
+  by default; hold Shift for the disenchant materials and their chances, and the craft's reagents
+  and profit). The craft cost uses the cheapest recipe you know, or the cheapest of any if you know none.
 - `/prof changelog`: what's new in each update (also shown once after updating)
 - `/prof debug`: the client build, which game API each feature uses (MISSING if one is missing),
   and what's been detected and recorded; paste it into bug reports

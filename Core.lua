@@ -136,6 +136,29 @@ function ReagentPrice(itemID, visiting)
   return price, source, craftedBy
 end
 
+-- How to craft an item, for tooltips: the cheapest recipe this character knows, else the cheapest
+-- of any. nil if no recipe makes it. { spellID, known, cost (per item, nil if a reagent has no
+-- price), profit (per item after the AH cut, nil without prices), reagents {itemID, count, price} per craft }
+function ns.CraftInfo(itemID)
+  local best
+  for _, spellID in ipairs(MadeBy[itemID] or {}) do
+    local known, cost = ns.IsKnown(spellID) == true, CraftCost(spellID)
+    -- Known beats unknown, priced beats unpriced, then cheaper wins.
+    if not best or (known and not best.known)
+      or (known == best.known and cost and (not best.cost or cost < best.cost)) then
+      best = { spellID = spellID, known = known, cost = cost }
+    end
+  end
+  if not best then return nil end
+  local recipe, price = ns.Recipes[best.spellID], AuctionPrice(itemID)
+  if price and best.cost then best.profit = price * (1 - AH_CUT) - best.cost end
+  best.reagents = {}
+  for i = 1, #recipe.r, 2 do
+    table.insert(best.reagents, { itemID = recipe.r[i], count = recipe.r[i + 1], price = ReagentPrice(recipe.r[i]) })
+  end
+  return best
+end
+
 -- Lowest skill the recipe can be learned at, or nil if no trainer visit has recorded it.
 function ns.LearnSkill(spellID)
   local recipe, seen = ns.Recipes[spellID], Recorded("trainer", spellID)
@@ -661,7 +684,7 @@ SlashCmdList.PROFIT = function(msg)
     print("/prof top [count] [profession] - most profitable known or learnable crafts")
     print("/prof export - copy your trainer and merchant recordings to share")
     print("/prof minimap - show or hide the minimap button")
-    print("/prof tooltip - show or hide disenchant values in item tooltips")
+    print("/prof tooltip - show or hide disenchant values and craft costs in item tooltips")
     print("/prof debug - which game APIs Profit uses on this client")
     print("/prof testdisenchant - show the \"didn't expect\" popup after your next disenchant")
     print("/prof changelog - what's new in each update")

@@ -5,6 +5,12 @@ local addonName, ns = ...
 -- skips the popup and just records it.
 
 ns.Changelog = {
+  { "0.3.4", {
+    "Craft costs in item tooltips: any item a profession makes shows what it costs to craft, from the " ..
+      "cheapest recipe you know, or the cheapest of any (marked \"not known\") if you know none. " ..
+      "Hold Shift for the reagents and the profit from selling it on the auction house. " ..
+      "/prof tooltip turns this off along with disenchant values.",
+  } },
   { "0.3.3", {
     "Where to learn recipes: recipe details now say where a recipe or its pattern drops, which vendor " ..
       "sells it, or which quest gives it, from Zockify's WoW Forever recipe database.",

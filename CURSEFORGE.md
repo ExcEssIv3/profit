@@ -13,6 +13,7 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 ## Disenchanting
 
 *   **Item tooltips** show the estimated disenchant value of green, blue and epic weapons and armor, based on the auction prices of the materials. Hold **Shift** to see each material with its chance and price.
+*   **Craft costs in tooltips:** any item a profession makes shows what it costs to craft, using the cheapest recipe you know (or the cheapest of any, marked "not known"). Hold **Shift** for the reagents and the profit from selling it on the auction house.
 *   **Disenchant from AH** (enchanters only): a list of gear on the auction house that's worth more disenchanted than it costs, leaving out items above your Enchanting skill. Click an item with the auction house open to search for it.
 *   Recipe details show what crafted gear disenchants into, and say when disenchanting beats selling.
 
@@ -30,7 +31,7 @@ In the window you can filter to recipes you know, recipes you know plus ones a t
 *   `/prof top [count] [profession]`: most profitable crafts, in chat
 *   `/prof <recipe>`: breakdown of one recipe
 *   `/prof minimap`: show or hide the minimap button
-*   `/prof tooltip`: show or hide disenchant values in item tooltips
+*   `/prof tooltip`: show or hide disenchant values and craft costs in item tooltips
 *   `/prof export`: share what you've recorded (see below)
 *   `/prof changelog`: what's new in each update
 *   `/prof debug`: details to include in a bug report
