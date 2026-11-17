@@ -38,6 +38,24 @@ In game, after an Auctionator scan:
   Enchanters also get **Disenchant from AH**: gear Auctionator has priced that's worth more
   disenchanted than it costs, leaving out items above your Enchanting skill. Clicking an item
   with the auction house open searches for it through Auctionator.
+  **Shopping list** in a recipe's details replaces the Auctionator list "Profit: <recipe>" with the
+  auction house materials for the number of crafts in the box beside it. A material you can make
+  is broken down into its own materials when making that many costs less than buying them, counting
+  whole crafts (3 Bronze Bars take 2 smelts, so buying them can be cheaper); vendor materials are
+  printed in chat. The crafted item is added last, with no quantity, so searching the list also
+  refreshes its price.
+  The same box sets the batch for the **Gold/h** column: the profit of that many crafts divided by
+  the time they take, i.e. the cast times of the recipe and of the materials made along the way,
+  plus 5 s for each recipe used (queued casts follow each other; switching recipe doesn't). Cast
+  times come from the game's spell data. A red "!" means the last scan listed fewer of a material
+  than the batch needs; Auctionator keeps only the lowest price, so the rest may cost more.
+  The **Craft** dropdown next to the search box (saved as `ProfitDB.craftMode`) picks how
+  materials you can make are handled, for Cost, Profit, Gold/h, the details and the shopping list:
+  *cheapest* (the default) makes them when that costs less; *best gold/h* makes them only when that
+  gives more gold per hour for the batch in the box, charging the time they take at the batch's own
+  rate and re-picking until the rate stops improving (Dinkelbach's method), and then Cost, Profit and
+  the details are that batch's averages per craft, so they agree with Gold/h; *never* buys
+  everything. With a recipe that loses money, *best gold/h* picks like *cheapest*.
 - `/prof top [count] [profession]`: most profitable known or learnable crafts, in chat
 - `/prof <recipe name>`: learn level, cost, sale value after the auction house cut, vendor value, profit,
   and for green or better gear what it disenchants into and the disenchant profit
