@@ -4,7 +4,10 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 
 *   **Material cost**, using auction prices, vendor prices for vendor-bought materials like thread, dye and vials, or the crafting cost of materials you can make yourself (like bolts of cloth) when that's cheaper
 *   **What it sells for** after the auction house cut, and a warning when a vendor would pay more
-*   **Profit** per craft
+*   **Profit** per craft, and as a **%** of the cost, to pick crafts when you have little gold to spend
+*   **Craft** dropdown: make the materials you can make when it's cheapest, only when it gives more gold per hour, or never
+*   **Gold per hour** for a batch of crafts, counting the cast times of the recipe and of the materials you make yourself, with a warning when the auction house didn't have enough of a material in your last scan
+*   **Market depth**: a batch's materials are priced from every auction Profit has seen (in a full scan with Auctionator's slower scan mode, when you select the material in Auctionator's search results, or with **Scan materials**, which searches the materials of the listed recipes one at a time), cheapest first, not just the lowest price, so one cheap listing doesn't throw off the numbers
 *   **Vendor flips**: rank crafts by what a vendor pays instead of the auction house, or by whichever pays more
 *   **Skill color** at your current level (grey recipes are included, since they can still be profitable)
 *   **Where to learn it** if you don't know it yet: trainer (with the skill needed), pattern or recipe item (with its vendor or auction price), or both, plus where it drops, which vendor sells it, or which quest gives it
@@ -23,7 +26,7 @@ Profit shows which of your profession crafts actually make gold. It combines Auc
 2.  Open each of your profession windows once so Profit knows your skill and recipes.
 3.  Type **/prof**, or click the minimap button.
 
-In the window you can filter to recipes you know, recipes you know plus ones a trainer teaches at your skill, recipes you can learn now, all recipes, or your favorites; pick one profession or your main professions; choose whether to sell on the auction house, to a vendor, or wherever pays more; search; and sort by any column. Click a recipe for its full breakdown. If you know it, the recipe also opens in your profession window. Click the star to the left of a recipe to add it to your favorites.
+In the window you can filter to recipes you know, recipes you know plus ones a trainer teaches at your skill, recipes you can learn now, all recipes, or your favorites; pick one profession or your main professions; choose whether to sell on the auction house, to a vendor, or wherever pays more; search; and sort by any column. Click a recipe for its full breakdown. If you know it, the recipe also opens in your profession window. Click the star to the left of a recipe to add it to your favorites. **Shopping list** under the details creates an Auctionator shopping list with the materials for as many crafts as you enter; materials you can make yourself (like bolts of cloth) are replaced by what they're made from when making that many is cheaper than buying them, and vendor materials are listed in chat. The crafted item is added last, without a quantity, so searching the list also refreshes what it sells for.
 
 ## Commands
 
